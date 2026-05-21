@@ -1,0 +1,64 @@
+{
+  "historyItems": [
+    {
+      "id": "pack-fallback-nouns",
+      "name": "小学名词库 · 模板",
+      "source": "例子数据",
+      "createdAt": 1777381895014,
+      "createdAtLabel": "2026-04-28 21:11",
+      "words": [
+        { "en": "apple", "zh": "苹果" },
+        { "en": "banana", "zh": "香蕉" },
+        { "en": "cat", "zh": "猫" },
+        { "en": "dog", "zh": "狗" },
+        { "en": "book", "zh": "书" },
+        { "en": "pencil", "zh": "铅笔" },
+        { "en": "car", "zh": "汽车" },
+        { "en": "milk", "zh": "牛奶" },
+        { "en": "vegetable", "zh": "蔬菜" },
+        { "en": "fish", "zh": "鱼" },
+        { "en": "zoo", "zh": "动物园" },
+        { "en": "night", "zh": "夜晚" },
+        { "en": "ice cream", "zh": "冰淇淋" }
+      ]
+    },
+    {
+      "id": "pack-fallback-adj",
+      "name": "小学形容词库 · 模板",
+      "source": "例子数据",
+      "createdAt": 1777179011853,
+      "createdAtLabel": "2026-04-26 12:50",
+      "words": [
+        { "en": "big", "zh": "大的" },
+        { "en": "small", "zh": "小的" },
+        { "en": "tall", "zh": "高的" },
+        { "en": "short", "zh": "矮的/短的" },
+        { "en": "happy", "zh": "快乐的" },
+        { "en": "sad", "zh": "难过的" },
+        { "en": "good", "zh": "好的" },
+        { "en": "bad", "zh": "坏的" },
+        { "en": "fast", "zh": "快速的" },
+        { "en": "slow", "zh": "缓慢的" }
+      ]
+    },
+    {
+      "id": "pack-fallback-verbs",
+      "name": "小学动词库 · 模板",
+      "source": "例子数据",
+      "createdAt": 1777382000000,
+      "createdAtLabel": "2026-04-28 21:13",
+      "words": [
+        { "en": "go", "zh": "去" },
+        { "en": "come", "zh": "来" },
+        { "en": "eat", "zh": "吃" },
+        { "en": "drink", "zh": "喝" },
+        { "en": "play", "zh": "玩" },
+        { "en": "run", "zh": "跑" },
+        { "en": "walk", "zh": "走" },
+        { "en": "read", "zh": "读" },
+        { "en": "write", "zh": "写" },
+        { "en": "help", "zh": "帮助" }
+      ]
+    }
+  ]
+}

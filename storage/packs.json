@@ -1,0 +1,545 @@
+{
+  "activePackId": "pack-1777381895014-pu3hlu",
+  "items": [
+    {
+      "id": "pack-1779406101351-rjx2sp",
+      "name": "banana / market / bed · 2026/5/22 07:27:55",
+      "source": "导入词库",
+      "createdAt": 1779406101351,
+      "createdAtLabel": "2026/5/22 07:28:21",
+      "words": [
+        {
+          "en": "banana",
+          "zh": "香蕉"
+        },
+        {
+          "en": "market",
+          "zh": "市场"
+        },
+        {
+          "en": "bed",
+          "zh": "床"
+        },
+        {
+          "en": "apple",
+          "zh": "苹果"
+        }
+      ]
+    },
+    {
+      "id": "pack-1777381895014-pu3hlu",
+      "name": "小学名词库 · 模板",
+      "source": "导入词库",
+      "createdAt": 1777381895014,
+      "createdAtLabel": "2026-04-28 21:11",
+      "words": [
+        {
+          "en": "apple",
+          "zh": "苹果"
+        },
+        {
+          "en": "banana",
+          "zh": "香蕉"
+        },
+        {
+          "en": "cat",
+          "zh": "猫"
+        },
+        {
+          "en": "dog",
+          "zh": "狗"
+        },
+        {
+          "en": "bird",
+          "zh": "鸟"
+        },
+        {
+          "en": "fish",
+          "zh": "鱼"
+        },
+        {
+          "en": "school",
+          "zh": "学校"
+        },
+        {
+          "en": "teacher",
+          "zh": "老师"
+        },
+        {
+          "en": "student",
+          "zh": "学生"
+        },
+        {
+          "en": "book",
+          "zh": "书"
+        },
+        {
+          "en": "pen",
+          "zh": "钢笔"
+        },
+        {
+          "en": "pencil",
+          "zh": "铅笔"
+        },
+        {
+          "en": "eraser",
+          "zh": "橡皮"
+        },
+        {
+          "en": "ruler",
+          "zh": "尺子"
+        },
+        {
+          "en": "bag",
+          "zh": "书包/袋子"
+        },
+        {
+          "en": "door",
+          "zh": "门"
+        },
+        {
+          "en": "window",
+          "zh": "窗户"
+        },
+        {
+          "en": "table",
+          "zh": "桌子"
+        },
+        {
+          "en": "chair",
+          "zh": "椅子"
+        },
+        {
+          "en": "bed",
+          "zh": "床"
+        },
+        {
+          "en": "room",
+          "zh": "房间"
+        },
+        {
+          "en": "house",
+          "zh": "房子"
+        },
+        {
+          "en": "car",
+          "zh": "汽车"
+        },
+        {
+          "en": "bus",
+          "zh": "公交车"
+        },
+        {
+          "en": "bike",
+          "zh": "自行车"
+        },
+        {
+          "en": "train",
+          "zh": "火车"
+        },
+        {
+          "en": "sun",
+          "zh": "太阳"
+        },
+        {
+          "en": "moon",
+          "zh": "月亮"
+        },
+        {
+          "en": "star",
+          "zh": "星星"
+        },
+        {
+          "en": "sky",
+          "zh": "天空"
+        },
+        {
+          "en": "water",
+          "zh": "水"
+        },
+        {
+          "en": "milk",
+          "zh": "牛奶"
+        },
+        {
+          "en": "bread",
+          "zh": "面包"
+        },
+        {
+          "en": "rice",
+          "zh": "米饭"
+        },
+        {
+          "en": "egg",
+          "zh": "鸡蛋"
+        },
+        {
+          "en": "family",
+          "zh": "家庭"
+        },
+        {
+          "en": "father",
+          "zh": "父亲"
+        },
+        {
+          "en": "mother",
+          "zh": "母亲"
+        },
+        {
+          "en": "brother",
+          "zh": "兄弟"
+        },
+        {
+          "en": "sister",
+          "zh": "姐妹"
+        },
+        {
+          "en": "friend",
+          "zh": "朋友"
+        }
+      ]
+    },
+    {
+      "id": "pack-1777179011853-lt8fgm",
+      "name": "小学形容词库 · 模板",
+      "source": "导入词库",
+      "createdAt": 1777179011853,
+      "createdAtLabel": "2026-04-26 12:50",
+      "words": [
+        {
+          "en": "big",
+          "zh": "大的"
+        },
+        {
+          "en": "small",
+          "zh": "小的"
+        },
+        {
+          "en": "tall",
+          "zh": "高的"
+        },
+        {
+          "en": "short",
+          "zh": "矮的/短的"
+        },
+        {
+          "en": "long",
+          "zh": "长的"
+        },
+        {
+          "en": "hot",
+          "zh": "热的"
+        },
+        {
+          "en": "cold",
+          "zh": "冷的"
+        },
+        {
+          "en": "warm",
+          "zh": "温暖的"
+        },
+        {
+          "en": "cool",
+          "zh": "凉爽的"
+        },
+        {
+          "en": "happy",
+          "zh": "快乐的"
+        },
+        {
+          "en": "sad",
+          "zh": "难过的"
+        },
+        {
+          "en": "good",
+          "zh": "好的"
+        },
+        {
+          "en": "bad",
+          "zh": "坏的"
+        },
+        {
+          "en": "new",
+          "zh": "新的"
+        },
+        {
+          "en": "old",
+          "zh": "旧的/年老的"
+        },
+        {
+          "en": "young",
+          "zh": "年轻的"
+        },
+        {
+          "en": "fast",
+          "zh": "快速的"
+        },
+        {
+          "en": "slow",
+          "zh": "缓慢的"
+        },
+        {
+          "en": "high",
+          "zh": "高的"
+        },
+        {
+          "en": "low",
+          "zh": "低的"
+        },
+        {
+          "en": "clean",
+          "zh": "干净的"
+        },
+        {
+          "en": "dirty",
+          "zh": "脏的"
+        },
+        {
+          "en": "wet",
+          "zh": "湿的"
+        },
+        {
+          "en": "dry",
+          "zh": "干的"
+        },
+        {
+          "en": "light",
+          "zh": "轻的"
+        },
+        {
+          "en": "heavy",
+          "zh": "重的"
+        },
+        {
+          "en": "soft",
+          "zh": "软的"
+        },
+        {
+          "en": "hard",
+          "zh": "硬的"
+        },
+        {
+          "en": "sweet",
+          "zh": "甜的"
+        },
+        {
+          "en": "sour",
+          "zh": "酸的"
+        },
+        {
+          "en": "loud",
+          "zh": "大声的"
+        },
+        {
+          "en": "quiet",
+          "zh": "安静的"
+        },
+        {
+          "en": "beautiful",
+          "zh": "美丽的"
+        },
+        {
+          "en": "ugly",
+          "zh": "丑陋的"
+        },
+        {
+          "en": "strong",
+          "zh": "强壮的"
+        },
+        {
+          "en": "weak",
+          "zh": "虚弱的"
+        },
+        {
+          "en": "full",
+          "zh": "满的"
+        },
+        {
+          "en": "empty",
+          "zh": "空的"
+        },
+        {
+          "en": "right",
+          "zh": "正确的/右边的"
+        },
+        {
+          "en": "wrong",
+          "zh": "错误的"
+        },
+        {
+          "en": "same",
+          "zh": "相同的"
+        },
+        {
+          "en": "different",
+          "zh": "不同的"
+        }
+      ]
+    },
+    {
+      "id": "pack-1777382000000-abc12d",
+      "name": "小学动词库 · 模板",
+      "source": "导入词库",
+      "createdAt": 1777382000000,
+      "createdAtLabel": "2026-04-28 21:13",
+      "words": [
+        {
+          "en": "go",
+          "zh": "去"
+        },
+        {
+          "en": "come",
+          "zh": "来"
+        },
+        {
+          "en": "eat",
+          "zh": "吃"
+        },
+        {
+          "en": "drink",
+          "zh": "喝"
+        },
+        {
+          "en": "play",
+          "zh": "玩"
+        },
+        {
+          "en": "run",
+          "zh": "跑"
+        },
+        {
+          "en": "walk",
+          "zh": "走"
+        },
+        {
+          "en": "jump",
+          "zh": "跳"
+        },
+        {
+          "en": "sit",
+          "zh": "坐"
+        },
+        {
+          "en": "stand",
+          "zh": "站"
+        },
+        {
+          "en": "read",
+          "zh": "读"
+        },
+        {
+          "en": "write",
+          "zh": "写"
+        },
+        {
+          "en": "listen",
+          "zh": "听"
+        },
+        {
+          "en": "speak",
+          "zh": "说"
+        },
+        {
+          "en": "see",
+          "zh": "看见"
+        },
+        {
+          "en": "look",
+          "zh": "看"
+        },
+        {
+          "en": "want",
+          "zh": "想要"
+        },
+        {
+          "en": "like",
+          "zh": "喜欢"
+        },
+        {
+          "en": "love",
+          "zh": "爱"
+        },
+        {
+          "en": "help",
+          "zh": "帮助"
+        },
+        {
+          "en": "make",
+          "zh": "制作"
+        },
+        {
+          "en": "clean",
+          "zh": "打扫"
+        },
+        {
+          "en": "wash",
+          "zh": "洗"
+        },
+        {
+          "en": "sleep",
+          "zh": "睡觉"
+        },
+        {
+          "en": "wake",
+          "zh": "醒来"
+        },
+        {
+          "en": "open",
+          "zh": "打开"
+        },
+        {
+          "en": "close",
+          "zh": "关上"
+        },
+        {
+          "en": "draw",
+          "zh": "画画"
+        },
+        {
+          "en": "sing",
+          "zh": "唱歌"
+        },
+        {
+          "en": "dance",
+          "zh": "跳舞"
+        },
+        {
+          "en": "study",
+          "zh": "学习"
+        },
+        {
+          "en": "teach",
+          "zh": "教"
+        },
+        {
+          "en": "give",
+          "zh": "给"
+        },
+        {
+          "en": "take",
+          "zh": "拿/带走"
+        },
+        {
+          "en": "put",
+          "zh": "放"
+        },
+        {
+          "en": "buy",
+          "zh": "买"
+        },
+        {
+          "en": "sell",
+          "zh": "卖"
+        },
+        {
+          "en": "cook",
+          "zh": "烹饪"
+        },
+        {
+          "en": "wait",
+          "zh": "等待"
+        }
+      ]
+    }
+  ]
+}
