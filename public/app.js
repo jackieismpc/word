@@ -554,6 +554,44 @@ function currentTimerValue() {
   return state.game.elapsedSeconds;
 }
 
+function getSingleModePairCount() {
+  const width = window.innerWidth || 1440;
+  if (width >= 1500) {
+    return 18;
+  }
+  if (width >= 1200) {
+    return 15;
+  }
+  if (width >= 900) {
+    return 12;
+  }
+  return 9;
+}
+
+function cycleDisplayOrder() {
+  const order = ["zh-first", "en-first", "mixed"];
+  const currentIndex = order.indexOf(state.settings.displayOrder);
+  return order[(currentIndex + 1) % order.length];
+}
+
+function toggleDifficultyValue() {
+  return state.settings.difficulty === "hard" ? "easy" : "hard";
+}
+
+function displayOrderLabel(value = state.settings.displayOrder) {
+  if (value === "zh-first") {
+    return "中文优先";
+  }
+  if (value === "en-first") {
+    return "英文优先";
+  }
+  return "中英混合";
+}
+
+function difficultyLabel(value = state.settings.difficulty) {
+  return value === "hard" ? "困难模式" : "简单模式";
+}
+
 function recordGameIfNeeded(status) {
   if (state.game.mode !== "single" || state.game.hasRecorded || !state.game.packId) {
     return;
@@ -620,7 +658,7 @@ function startSingleGame(pack = currentPack()) {
     return;
   }
 
-  const sampleCount = Math.min(9, pack.words.length);
+  const sampleCount = Math.min(getSingleModePairCount(), pack.words.length);
   const selectedWords = shuffle(pack.words).slice(0, sampleCount);
   const maxSeconds = state.settings.difficulty === "hard" ? Math.max(30, selectedWords.length * 7) : null;
 
@@ -1029,58 +1067,60 @@ function renderToast() {
 
 function renderSidebar() {
   const view = state.view;
+  const compact = view === "game";
+  const actions = [
+    ["新增单词", "drawer:add-words", "+"],
+    ["导入记录", "drawer:packs", "□"],
+    ["游戏历史", "drawer:history", "↺"],
+    ["帮助", "drawer:help", "?"],
+    ["字典配置", "view:dictionary", "⚙"],
+  ];
+
   return `
-    <aside class="sidebar">
+    <aside class="sidebar ${compact ? "is-compact" : ""}">
       <div class="brand">
         <div class="brand-mark">对</div>
-        <div>
+        <div class="brand-copy">
           <div class="brand-title">单词对对碰</div>
           <div class="brand-subtitle">Word Match Local</div>
         </div>
       </div>
       <div class="nav">
-        ${[
-          ["新增单词", "drawer:add-words"],
-          ["导入记录", "drawer:packs"],
-          ["游戏历史", "drawer:history"],
-          ["帮助", "drawer:help"],
-          ["一键配置", "action:prepare"],
-        ]
+        ${actions
           .map(
-            ([label, action], index) => `
-              <button class="nav-button ${index === 4 ? "is-accent" : ""}" data-action="${action}">
-                <span>${text(label)}</span>
+            ([label, action, icon], index) => `
+              <button class="nav-button ${index === 4 ? "is-accent" : ""}" data-action="${action}" title="${text(label)}">
+                <span class="nav-icon">${text(icon)}</span>
+                <span class="nav-label">${text(label)}</span>
               </button>
             `,
           )
           .join("")}
       </div>
-      <div class="nav-footer">
-        <button class="nav-button ${view === "dictionary" ? "is-active" : ""}" data-action="view:dictionary">
-          <span>字典配置</span>
-        </button>
-        <button class="nav-button ${view === "game" ? "is-active" : ""}" data-action="view:game">
-          <span>返回游戏</span>
-        </button>
-      </div>
+      ${compact ? "" : `
+        <div class="nav-footer">
+          <button class="nav-button is-accent" data-action="action:prepare" title="一键配置">
+            <span class="nav-icon">配</span>
+            <span class="nav-label">一键配置</span>
+          </button>
+          <button class="nav-button ${view === "game" ? "is-active" : ""}" data-action="view:game" title="返回游戏">
+            <span class="nav-icon">游</span>
+            <span class="nav-label">返回游戏</span>
+          </button>
+        </div>
+      `}
     </aside>
   `;
 }
 
 function renderTimer() {
-  const modeLabel =
-    state.game.mode === "multi"
-      ? "多词模式"
-      : state.settings.difficulty === "hard"
-        ? "困难模式"
-        : "简单模式";
   return `
     <div class="timer">
       <div>
         <div class="muted">当前局面</div>
         <div class="timer-value">${text(formatTime(currentTimerValue()))}</div>
       </div>
-      <div class="pill">${text(modeLabel)}</div>
+      <div class="pill">${text(state.game.mode === "multi" ? "多词模式" : difficultyLabel())}</div>
     </div>
   `;
 }
@@ -1130,7 +1170,6 @@ function renderBubbles() {
 
 function renderSingleControls() {
   const pack = currentPack();
-  const compact = window.innerWidth <= 860;
   return `
     <div class="bottom-bar">
       <div class="bottom-top">
@@ -1145,45 +1184,25 @@ function renderSingleControls() {
         <div class="pill">进度 ${state.game.matchedCount}/${state.game.totalPairs || 0}</div>
       </div>
       <div class="message-bar">${text(gameStatusMessage())}</div>
-      ${
-        compact
-          ? `
-            <div class="inline-actions">
-              <button class="secondary-button" data-action="toggle-controls">
-                ${state.ui.controlsExpanded ? "收起控制项" : "展开控制项"}
-              </button>
-            </div>
-          `
-          : ""
-      }
-      <div class="control-row ${compact && !state.ui.controlsExpanded ? "is-collapsed" : ""}">
+      <div class="control-row control-row-dock">
         <button class="control-button ${state.settings.soundEnabled ? "is-active" : ""}" data-action="toggle-sound" title="${state.settings.soundEnabled ? "关闭音效" : "开启音效"}">
           音效
         </button>
         <button class="control-button ${state.settings.pronunciationEnabled ? "is-active" : ""}" data-action="toggle-pronounce" title="${state.settings.pronunciationEnabled ? "关闭单词发音" : "开启单词发音"}">
           发音
         </button>
-        <div class="segment-group">
-          ${[
-            ["zh-first", "中文优先"],
-            ["en-first", "英文优先"],
-            ["mixed", "中英混合"],
-          ]
-            .map(
-              ([value, label]) => `
-                <button class="segment-button ${state.settings.displayOrder === value ? "is-active" : ""}" data-action="display-order:${value}">
-                  ${text(label)}
-                </button>
-              `,
-            )
-            .join("")}
-        </div>
+        <button class="control-button" data-action="display-order-next" title="切换显示顺序">
+          ${text(displayOrderLabel())}
+        </button>
+        <button class="control-button ${state.settings.difficulty === "hard" ? "is-active" : ""}" data-action="difficulty-toggle" title="切换难度">
+          ${text(difficultyLabel())}
+        </button>
         <button class="control-button" data-action="hint" title="提示配对词 (Ctrl / ⌘ + /)" ${state.game.mode !== "single" ? "disabled" : ""}>提示</button>
         <button class="control-button" data-action="restart">重开</button>
+        <button class="control-button" data-action="switch-mode:multi">多词模式</button>
         <div class="control-spacer"></div>
         <div class="pill">${text(pack?.name || "当前词包")}</div>
         <button class="secondary-button" data-action="drawer:help" title="使用说明 (?)">使用说明</button>
-        <button class="secondary-button" data-action="drawer:packs">切换词包</button>
       </div>
     </div>
   `;
@@ -1216,47 +1235,10 @@ function renderMultiControls() {
 }
 
 function renderGameView() {
-  const pack = currentPack();
-  const statusLine =
-    state.game.status === "won"
-      ? "这一局已经完成，可以重开一局继续。"
-      : state.game.status === "lost"
-        ? "这一局超时了，换一局继续。"
-        : pack
-          ? `当前词包：${pack.name}`
-          : "先配置字典和词包，再开始游戏。";
-
   return `
     <section class="game-view">
-      <div class="toolbar">
-        <div>
-          <div class="page-title">单词对对碰</div>
-          <div class="page-subtitle">${text(statusLine)}</div>
-        </div>
+      <div class="game-overlay">
         ${renderTimer()}
-      </div>
-      <div class="hero-actions">
-        <div class="pill">${text(state.game.mode === "multi" ? "临时多词模式" : `词包：${pack?.name || "当前词包"}`)}</div>
-        <div class="segment-group">
-          <button class="segment-button ${state.game.mode === "single" ? "is-active" : ""}" data-action="switch-mode:single">单词模式</button>
-          <button class="segment-button ${state.game.mode === "multi" ? "is-active" : ""}" data-action="switch-mode:multi">多词模式</button>
-        </div>
-        <div class="segment-group">
-          ${[
-            ["easy", "简单模式"],
-            ["hard", "困难模式"],
-          ]
-            .map(
-              ([value, label]) => `
-                <button class="segment-button ${state.settings.difficulty === value ? "is-active" : ""}" data-action="difficulty:${value}">
-                  ${text(label)}
-                </button>
-              `,
-            )
-            .join("")}
-        </div>
-        <button class="secondary-button" data-action="drawer:add-words">新增单词</button>
-        <button class="secondary-button" data-action="drawer:packs">切换词包</button>
       </div>
       <div class="board">${renderBubbles()}</div>
       ${state.game.mode === "multi" ? renderMultiControls() : renderSingleControls()}
@@ -1309,7 +1291,7 @@ function renderAddWordsDrawer() {
   const unresolvedCount = state.addWords.preview.length - resolvedCount;
   return `
     <div class="drawer-mask" data-action="close-drawer"></div>
-    <aside class="drawer">
+    <aside class="drawer drawer-form">
       <div class="drawer-header">
         <div>
           <div class="drawer-title">单词录入</div>
@@ -1317,7 +1299,8 @@ function renderAddWordsDrawer() {
         </div>
         <button class="icon-button" data-action="close-drawer">×</button>
       </div>
-      <div class="drawer-stack">
+      <div class="drawer-body drawer-body-scroll">
+        <div class="drawer-stack">
         <input class="inline-input" id="add-words-pack-name" placeholder="词包名称（可选）" value="${text(state.addWords.packName)}" />
         <textarea class="textarea" id="add-words-raw">${text(state.addWords.raw)}</textarea>
         <div class="inline-actions">
@@ -1370,6 +1353,9 @@ function renderAddWordsDrawer() {
               <div class="empty-state">先点“自动完成”，系统会把可识别词条整理成可编辑预览。</div>
             `
         }
+        </div>
+      </div>
+      <div class="drawer-footer">
         <div class="inline-actions">
           <button class="primary-button" data-action="create-pack" ${state.addWords.preview.length ? "" : "disabled"}>导入并开始游戏</button>
         </div>
@@ -1518,6 +1504,10 @@ function renderSetupBanner() {
   }
 
   const needsSetup = !state.setup.dictionaryReady || !state.setup.packsReady;
+  if (state.view === "game" && !needsSetup) {
+    return "";
+  }
+
   if (!needsSetup && state.ui.setupBannerCollapsed) {
     return `
       <div class="banner banner-compact">
@@ -1603,7 +1593,7 @@ function render() {
   const app = document.getElementById("app");
   app.innerHTML = `
     ${renderToast()}
-    <div class="shell">
+    <div class="shell ${state.view === "game" ? "is-game-shell" : ""}">
       ${renderSidebar()}
       <main class="main">
         ${state.view === "dictionary" ? renderDictionaryView() : renderGameView()}
@@ -1671,6 +1661,14 @@ function bindDelegatedEvents() {
     }
     if (action === "toggle-pronounce") {
       applySetting({ pronunciationEnabled: !state.settings.pronunciationEnabled });
+      return;
+    }
+    if (action === "display-order-next") {
+      applySetting({ displayOrder: cycleDisplayOrder() }, { restartGame: true });
+      return;
+    }
+    if (action === "difficulty-toggle") {
+      applySetting({ difficulty: toggleDifficultyValue() }, { restartGame: true });
       return;
     }
     if (action === "toggle-controls") {
