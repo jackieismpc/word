@@ -310,9 +310,10 @@ button {
 
 .game-overlay {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: 18px;
+  right: 18px;
   z-index: 2;
+  pointer-events: none;
 }
 
 .page-title {
@@ -337,16 +338,6 @@ button {
   box-shadow: var(--shadow);
 }
 
-.timer-fixed {
-  position: fixed;
-  bottom: 20px;
-  right: 24px;
-  z-index: 50;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-}
-
 .timer-value {
   font-size: clamp(24px, 4vw, 38px);
   font-weight: 900;
@@ -356,7 +347,7 @@ button {
 .board {
   position: relative;
   min-height: 0;
-  padding: 0;
+  padding: 10px 12px 12px;
   overflow: auto;
 }
 
@@ -953,6 +944,11 @@ button {
     height: auto;
     min-height: calc(100vh - 24px);
     padding-bottom: 160px;
+  }
+
+  .game-overlay {
+    top: 14px;
+    right: 14px;
   }
 }
 

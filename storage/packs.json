@@ -1,6 +1,27 @@
 {
-  "activePackId": "pack-1777381895014-pu3hlu",
+  "activePackId": "pack-1779424187596-0azr1x",
   "items": [
+    {
+      "id": "pack-1779424187596-0azr1x",
+      "name": "test",
+      "source": "导入词库",
+      "createdAt": 1779424187596,
+      "createdAtLabel": "2026/5/22 12:29:47",
+      "words": [
+        {
+          "en": "banana",
+          "zh": "香蕉"
+        },
+        {
+          "en": "orange",
+          "zh": "橙色的"
+        },
+        {
+          "en": "apple",
+          "zh": "苹果"
+        }
+      ]
+    },
     {
       "id": "pack-1777381895014-pu3hlu",
       "name": "小学名词库 · 模板",

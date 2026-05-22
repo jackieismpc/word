@@ -16,6 +16,7 @@ const SOUND_URLS = {
 };
 
 const UI_STATE_KEY = "word-match-local-ui-v2";
+const GAME_DURATION_SECONDS = 180;
 const DEFAULT_UI = {
   helpWidth: 560,
   setupBannerCollapsed: true,
@@ -270,6 +271,12 @@ function resolveWordsFromDictionary(raw) {
 }
 
 function refreshMultiModePreview() {
+  const previousManual = new Map(
+    (state.multiModeUnmatched || []).map((item) => [
+      normalizeEnglishCandidate(item.en),
+      String(item.zh || "").trim(),
+    ]),
+  );
   const lines = String(state.multiModeInput || "").split(/\n/);
   const matched = [];
   const unmatched = [];
@@ -289,13 +296,88 @@ function refreshMultiModePreview() {
       if (hit) {
         matched.push({ en: hit.word, zh: hit.chinese });
       } else {
-        unmatched.push({ en: word, zh: "" });
+        unmatched.push({ en: word, zh: previousManual.get(word) || "" });
       }
     }
   }
 
   state.multiModePreview = matched;
   state.multiModeUnmatched = unmatched;
+}
+
+function multiModeReadyCount() {
+  return state.multiModePreview.length + (state.multiModeUnmatched || []).filter((item) => String(item.zh || "").trim()).length;
+}
+
+function captureFocusedInput() {
+  const active = document.activeElement;
+  if (!(active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement)) {
+    return null;
+  }
+
+  let selector = "";
+  if (active.id) {
+    selector = `#${CSS.escape(active.id)}`;
+  } else if (active.dataset.role && active.dataset.id) {
+    selector = `[data-role="${CSS.escape(active.dataset.role)}"][data-id="${CSS.escape(active.dataset.id)}"]`;
+  } else if (active.dataset.role && active.dataset.en) {
+    selector = `[data-role="${CSS.escape(active.dataset.role)}"][data-en="${CSS.escape(active.dataset.en)}"]`;
+  }
+
+  if (!selector) {
+    return null;
+  }
+
+  return {
+    selector,
+    selectionStart: typeof active.selectionStart === "number" ? active.selectionStart : null,
+    selectionEnd: typeof active.selectionEnd === "number" ? active.selectionEnd : null,
+    scrollTop: active.scrollTop,
+    scrollLeft: active.scrollLeft,
+  };
+}
+
+function restoreFocusedInput(snapshot) {
+  if (!snapshot) {
+    return;
+  }
+
+  const target = document.querySelector(snapshot.selector);
+  if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) {
+    return;
+  }
+
+  target.focus({ preventScroll: true });
+  if (snapshot.selectionStart !== null && snapshot.selectionEnd !== null) {
+    try {
+      target.setSelectionRange(snapshot.selectionStart, snapshot.selectionEnd);
+    } catch {
+      // Ignore controls that do not support programmatic selection restore.
+    }
+  }
+  if (typeof snapshot.scrollTop === "number") {
+    target.scrollTop = snapshot.scrollTop;
+  }
+  if (typeof snapshot.scrollLeft === "number") {
+    target.scrollLeft = snapshot.scrollLeft;
+  }
+}
+
+function updateTimerUi() {
+  const timer = document.querySelector("[data-role='game-timer']");
+  if (!timer) {
+    return;
+  }
+
+  const valueNode = timer.querySelector("[data-role='timer-value']");
+  if (valueNode) {
+    valueNode.textContent = formatTime(currentTimerValue());
+  }
+
+  const modeNode = timer.querySelector("[data-role='timer-mode']");
+  if (modeNode) {
+    modeNode.textContent = state.game.mode === "multi" ? "多词模式" : difficultyLabel();
+  }
 }
 
 function parsePreviewWords(raw) {
@@ -576,8 +658,15 @@ function currentPack() {
 }
 
 function currentTimerValue() {
-  if (state.settings.difficulty === "hard" && state.game.remainingSeconds !== null) {
+  if (state.game.remainingSeconds !== null) {
     return state.game.remainingSeconds;
+  }
+  return state.game.elapsedSeconds;
+}
+
+function currentPlayedSeconds() {
+  if (state.game.remainingSeconds !== null) {
+    return GAME_DURATION_SECONDS - state.game.remainingSeconds;
   }
   return state.game.elapsedSeconds;
 }
@@ -636,7 +725,7 @@ function recordGameIfNeeded(status) {
       displayOrder: state.settings.displayOrder,
       matchedCount: state.game.matchedCount,
       totalCount: state.game.totalPairs,
-      durationSeconds: currentTimerValue(),
+      durationSeconds: currentPlayedSeconds(),
       status,
     }),
   })
@@ -665,17 +754,16 @@ function startTimer() {
     }
 
     state.game.elapsedSeconds += 1;
-    if (state.settings.difficulty === "hard") {
-      state.game.remainingSeconds = clamp((state.game.remainingSeconds ?? 0) - 1, 0, 9999);
-      if (state.game.remainingSeconds === 0) {
-        state.game.status = "lost";
-        recordGameIfNeeded("lost");
-        stopTimer();
-        showToast("error", "时间到了，这局结束了。");
-      }
+    state.game.remainingSeconds = clamp((state.game.remainingSeconds ?? GAME_DURATION_SECONDS) - 1, 0, GAME_DURATION_SECONDS);
+    if (state.game.remainingSeconds === 0) {
+      state.game.status = "lost";
+      recordGameIfNeeded("lost");
+      stopTimer();
+      showToast("error", "3 分钟倒计时结束，本局失败，请重新开始。");
+      render();
     }
 
-    render();
+    updateTimerUi();
   }, 1000);
 }
 
@@ -688,7 +776,6 @@ function startSingleGame(pack = currentPack()) {
 
   const sampleCount = Math.min(getSingleModePairCount(), pack.words.length);
   const selectedWords = shuffle(pack.words).slice(0, sampleCount);
-  const maxSeconds = state.settings.difficulty === "hard" ? Math.max(30, selectedWords.length * 7) : null;
 
   state.game = {
     ...createGameState(),
@@ -698,7 +785,7 @@ function startSingleGame(pack = currentPack()) {
     status: "playing",
     packId: pack.id,
     packName: pack.name,
-    remainingSeconds: maxSeconds,
+    remainingSeconds: GAME_DURATION_SECONDS,
   };
   state.multiModeInput = "";
   state.multiModePreview = [];
@@ -727,7 +814,7 @@ function startMultiModeGame() {
     status: "playing",
     packId: null,
     packName: "临时多词模式",
-    remainingSeconds: null,
+    remainingSeconds: GAME_DURATION_SECONDS,
   };
   state.searchQuery = "";
   refreshMultiModePreview();
@@ -1158,10 +1245,10 @@ function renderSidebar() {
 function renderTimer() {
   if (state.game.status === "idle") return "";
   return `
-    <div class="timer timer-fixed">
+    <div class="timer" data-role="game-timer">
       <div class="muted">当前局面</div>
-      <div class="timer-value">${text(formatTime(currentTimerValue()))}</div>
-      <div class="pill">${text(state.game.mode === "multi" ? "多词模式" : difficultyLabel())}</div>
+      <div class="timer-value" data-role="timer-value">${text(formatTime(currentTimerValue()))}</div>
+      <div class="pill" data-role="timer-mode">${text(state.game.mode === "multi" ? "多词模式" : difficultyLabel())}</div>
     </div>
   `;
 }
@@ -1254,6 +1341,7 @@ function renderSingleControls() {
 function renderMultiControls() {
   const preview = state.multiModePreview;
   const unmatched = state.multiModeUnmatched || [];
+  const readyCount = multiModeReadyCount();
   return `
     <div class="bottom-bar">
       <textarea class="textarea" id="multi-mode-input" placeholder="输入内容，空格或回车隔开。系统会从本地字典里匹配中译。">${text(state.multiModeInput)}</textarea>
@@ -1281,8 +1369,8 @@ function renderMultiControls() {
         <button class="ghost-button" data-action="multi-split">拆分</button>
         <button class="ghost-button" data-action="multi-clear">清空所有条目</button>
         <div class="control-spacer"></div>
-        <div class="pill">已识别 ${preview.length + unmatched.filter(i => i.zh).length} 词</div>
-        <button class="primary-button" data-action="start-multi" ${preview.length + unmatched.filter(i => i.zh).length >= 2 ? "" : "disabled"}>开始匹配</button>
+        <div class="pill" data-role="multi-ready-pill">已识别 ${readyCount} 词</div>
+        <button class="primary-button" data-action="start-multi" ${readyCount >= 2 ? "" : "disabled"}>开始匹配</button>
       </div>
     </div>
   `;
@@ -1302,11 +1390,15 @@ function renderMultiModePreviewOnly() {
       ? `已识别 ${preview.length} 个词：${preview.map((item) => item.en).slice(0, 6).join("、")}${preview.length > 6 ? "…" : ""}${unmatched.length ? `，还有 ${unmatched.length} 个词未识别，请手动补全中文。` : ""}`
       : "当前输入里还没有识别到可匹配词条。"
     : "输入一段英文内容，系统会先拆分再从本地字典匹配中译。";
-  const pill = document.querySelector(".bottom-bar .control-row .pill");
-  if (pill) pill.textContent = `已识别 ${preview.length + unmatched.filter(i => i.zh).length} 词`;
-  // Re-render unmatched section if needed
+  const pill = document.querySelector("[data-role='multi-ready-pill']");
+  if (pill) pill.textContent = `已识别 ${multiModeReadyCount()} 词`;
+  const startButton = document.querySelector("[data-action='start-multi']");
+  if (startButton instanceof HTMLButtonElement) {
+    startButton.disabled = multiModeReadyCount() < 2;
+  }
   const existingTable = document.querySelector("[data-role='multi-unmatched-zh']")?.closest(".preview-table");
-  if (unmatched.length && !existingTable) {
+  const existingCount = existingTable ? existingTable.querySelectorAll("[data-role='multi-unmatched-zh']").length : 0;
+  if ((unmatched.length && existingCount !== unmatched.length) || (!unmatched.length && existingTable)) {
     render();
   }
 }
@@ -1314,9 +1406,11 @@ function renderMultiModePreviewOnly() {
 function renderGameView() {
   return `
     <section class="game-view">
+      <div class="game-overlay">
+        ${renderTimer()}
+      </div>
       <div class="board">${renderBubbles()}</div>
       ${state.game.mode === "multi" ? renderMultiControls() : renderSingleControls()}
-      ${renderTimer()}
     </section>
   `;
 }
@@ -1666,6 +1760,7 @@ function renderSetupBanner() {
 
 function render() {
   const app = document.getElementById("app");
+  const focusedInput = captureFocusedInput();
   app.innerHTML = `
     ${renderToast()}
     <div class="shell ${state.view === "game" ? "is-game-shell" : ""}">
@@ -1677,6 +1772,7 @@ function render() {
     </div>
     ${renderDrawer()}
   `;
+  restoreFocusedInput(focusedInput);
 }
 
 function bindDelegatedEvents() {
