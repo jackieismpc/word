@@ -3,6 +3,7 @@ import { mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createGzip } from "node:zlib";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,6 +40,9 @@ function sendJson(res, statusCode, body, headers = {}) {
   res.writeHead(statusCode, {
     "Content-Type": "application/json; charset=utf-8",
     "Cache-Control": "no-store",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
     ...headers,
   });
   res.end(JSON.stringify(body, null, 2));
@@ -505,11 +509,25 @@ async function serveStatic(req, res, pathname) {
       return;
     }
     const isHtml = target.endsWith(".html");
-    res.writeHead(200, {
-      "Content-Type": getMimeType(target),
-      "Cache-Control": isHtml ? "no-store" : "max-age=3600",
-    });
-    createReadStream(target).pipe(res);
+    const mime = getMimeType(target);
+    const acceptsGzip = /gzip/.test(req.headers["accept-encoding"] || "");
+    const isCompressible = mime.startsWith("text/") || mime.includes("javascript") || mime.includes("json");
+
+    const headers = {
+      "Content-Type": mime,
+      "Cache-Control": isHtml ? "no-store" : "public, max-age=31536000, immutable",
+      "Access-Control-Allow-Origin": "*",
+    };
+
+    if (acceptsGzip && isCompressible) {
+      headers["Content-Encoding"] = "gzip";
+      headers["Vary"] = "Accept-Encoding";
+      res.writeHead(200, headers);
+      createReadStream(target).pipe(createGzip()).pipe(res);
+    } else {
+      res.writeHead(200, headers);
+      createReadStream(target).pipe(res);
+    }
   } catch {
     sendText(res, 404, "Not found");
   }
@@ -743,6 +761,19 @@ async function handleApi(req, res, pathname) {
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url || "/", `http://${req.headers.host || `127.0.0.1:${PORT}`}`);
+
+    // Handle CORS preflight
+    if (req.method === "OPTIONS") {
+      res.writeHead(204, {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Max-Age": "86400",
+      });
+      res.end();
+      return;
+    }
+
     if (url.pathname.startsWith("/api/")) {
       await handleApi(req, res, url.pathname);
       return;

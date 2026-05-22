@@ -2409,10 +2409,12 @@ function bindGlobalEvents() {
     }
   });
 
+  let resizeTimer = null;
   window.addEventListener("resize", () => {
     cachedColumnWidth = window.innerWidth;
     syncGameLayoutMetrics();
-    render();
+    window.clearTimeout(resizeTimer);
+    resizeTimer = window.setTimeout(render, 120);
   });
 
   state.globalEventsBound = true;

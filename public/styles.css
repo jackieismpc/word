@@ -37,6 +37,7 @@ body {
 
 body {
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 button,
@@ -55,6 +56,7 @@ button {
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .shell.is-game-shell {
@@ -65,6 +67,7 @@ button {
   position: sticky;
   top: 0;
   max-height: 100vh;
+  max-height: 100dvh;
   overflow: visible;
   padding: 18px 14px;
   border-right: 1px solid var(--line);
@@ -240,6 +243,7 @@ button {
 .game-view,
 .dictionary-view {
   min-height: calc(100vh - 36px);
+  min-height: calc(100dvh - 36px);
   padding: 20px;
   border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: 36px;
@@ -254,6 +258,7 @@ button {
   display: grid;
   grid-template-rows: 1fr;
   height: calc(100vh - 36px);
+  height: calc(100dvh - 36px);
   padding: 12px 12px 180px;
   overflow: hidden;
 }
@@ -387,6 +392,7 @@ button {
   overflow: hidden;
   animation: bubble-float var(--float-duration, 4.5s) ease-in-out infinite;
   animation-delay: var(--float-delay, 0s);
+  will-change: transform;
 }
 
 .bubble::before {
@@ -879,6 +885,7 @@ button {
 .help-frame {
   width: 100%;
   min-height: calc(100vh - 160px);
+  min-height: calc(100dvh - 160px);
   border: 0;
   border-radius: 18px;
   background: white;
@@ -945,6 +952,7 @@ button {
   .game-view {
     height: auto;
     min-height: calc(100vh - 24px);
+    min-height: calc(100dvh - 24px);
     padding-bottom: 160px;
   }
 
@@ -988,6 +996,7 @@ button {
   .game-view,
   .dictionary-view {
     min-height: calc(100vh - 24px);
+    min-height: calc(100dvh - 24px);
     padding: 16px;
     border-radius: 28px;
   }
@@ -1011,12 +1020,12 @@ button {
   .bubbles {
     gap: 8px;
     padding: 4px 0 12px;
-    grid-template-columns: repeat(3, 1fr) !important;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
   }
 
   .bubble {
     width: 100%;
-    height: auto;
     aspect-ratio: 1;
   }
 
@@ -1080,5 +1089,78 @@ button {
   .bubble {
     width: clamp(72px, 5.8vw, 110px);
     height: clamp(72px, 5.8vw, 110px);
+  }
+}
+
+/* 超小屏幕 (< 480px) */
+@media (max-width: 479px) {
+  .main {
+    padding: 8px;
+  }
+
+  .game-view,
+  .dictionary-view {
+    padding: 12px;
+    border-radius: 20px;
+  }
+
+  .bubbles {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .bubble-label {
+    font-size: clamp(10px, 3.5vw, 14px);
+  }
+
+  .drawer-title {
+    font-size: 22px;
+  }
+
+  .page-title {
+    font-size: clamp(22px, 6vw, 32px);
+  }
+
+  .metric-number {
+    font-size: clamp(36px, 10vw, 56px);
+  }
+
+  .bottom-bar {
+    padding: 10px 12px;
+  }
+
+  .primary-button,
+  .secondary-button,
+  .ghost-button,
+  .danger-button,
+  .control-button {
+    min-height: 38px;
+    padding: 0 12px;
+    font-size: 14px;
+  }
+}
+
+/* 横屏小屏幕 */
+@media (max-height: 500px) and (orientation: landscape) {
+  .sidebar {
+    position: static;
+    max-height: none;
+  }
+
+  .game-view {
+    height: auto;
+    min-height: auto;
+    padding-bottom: 12px;
+  }
+
+  .bottom-bar {
+    position: static;
+    transform: none;
+    width: auto;
+    margin-top: 8px;
+  }
+
+  .bubbles {
+    --bubble-size: clamp(56px, 8vh, 80px);
   }
 }

@@ -1,15 +1,15 @@
 [
   {
-    "id": "game-1779436080812-7vyu7g",
-    "packId": "pack-1779436075717-jglyli",
-    "packName": "pencil / apple · 2026/5/22 15:47:46",
+    "id": "game-1779437308377-c7hc8c",
+    "packId": "pack-1779425494870-rqybkm",
+    "packName": "测试组1",
     "mode": "single",
     "difficulty": "easy",
     "displayOrder": "mixed",
-    "matchedCount": 2,
-    "totalCount": 2,
-    "durationSeconds": 4,
+    "matchedCount": 5,
+    "totalCount": 5,
+    "durationSeconds": 13,
     "status": "won",
-    "completedAt": "2026-05-22T07:48:00.812Z"
+    "completedAt": "2026-05-22T08:08:28.377Z"
   }
 ]
