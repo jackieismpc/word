@@ -1,5 +1,18 @@
 [
   {
+    "id": "game-1779431049953-aqndck",
+    "packId": "pack-1779425494870-rqybkm",
+    "packName": "测试组1",
+    "mode": "single",
+    "difficulty": "easy",
+    "displayOrder": "mixed",
+    "matchedCount": 0,
+    "totalCount": 5,
+    "durationSeconds": 180,
+    "status": "lost",
+    "completedAt": "2026-05-22T06:24:09.953Z"
+  },
+  {
     "id": "game-1779425720672-647bcr",
     "packId": "pack-1779425494870-rqybkm",
     "packName": "测试组1",

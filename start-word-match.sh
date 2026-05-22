@@ -57,11 +57,16 @@ find_available_port() {
 }
 
 get_tailscale_ipv4() {
-  if ! command -v tailscale >/dev/null 2>&1; then
+  local tailscale_bin
+  if command -v tailscale >/dev/null 2>&1; then
+    tailscale_bin="tailscale"
+  elif [[ -x "/Applications/Tailscale.app/Contents/MacOS/Tailscale" ]]; then
+    tailscale_bin="/Applications/Tailscale.app/Contents/MacOS/Tailscale"
+  else
     return 0
   fi
 
-  tailscale ip -4 2>/dev/null | head -n 1
+  "$tailscale_bin" ip -4 2>/dev/null | head -n 1
 }
 
 is_word_match_pid() {
