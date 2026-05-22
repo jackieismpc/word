@@ -1,6 +1,23 @@
 {
-  "activePackId": "pack-1779425494870-rqybkm",
+  "activePackId": "pack-1779436075717-jglyli",
   "items": [
+    {
+      "id": "pack-1779436075717-jglyli",
+      "name": "pencil / apple · 2026/5/22 15:47:46",
+      "source": "导入词库",
+      "createdAt": 1779436075717,
+      "createdAtLabel": "2026/5/22 15:47:55",
+      "words": [
+        {
+          "en": "pencil",
+          "zh": "铅笔"
+        },
+        {
+          "en": "apple",
+          "zh": "苹果"
+        }
+      ]
+    },
     {
       "id": "pack-1779425494870-rqybkm",
       "name": "测试组1",

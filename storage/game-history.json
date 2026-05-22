@@ -1,67 +1,15 @@
 [
   {
-    "id": "game-1779434093881-o4akfs",
-    "packId": "pack-1779425494870-rqybkm",
-    "packName": "测试组1",
+    "id": "game-1779436080812-7vyu7g",
+    "packId": "pack-1779436075717-jglyli",
+    "packName": "pencil / apple · 2026/5/22 15:47:46",
     "mode": "single",
     "difficulty": "easy",
     "displayOrder": "mixed",
-    "matchedCount": 0,
-    "totalCount": 5,
-    "durationSeconds": 180,
-    "status": "lost",
-    "completedAt": "2026-05-22T07:14:53.881Z"
-  },
-  {
-    "id": "game-1779433732811-30euj4",
-    "packId": "pack-1779425494870-rqybkm",
-    "packName": "测试组1",
-    "mode": "single",
-    "difficulty": "easy",
-    "displayOrder": "mixed",
-    "matchedCount": 0,
-    "totalCount": 5,
-    "durationSeconds": 180,
-    "status": "lost",
-    "completedAt": "2026-05-22T07:08:52.811Z"
-  },
-  {
-    "id": "game-1779431049953-aqndck",
-    "packId": "pack-1779425494870-rqybkm",
-    "packName": "测试组1",
-    "mode": "single",
-    "difficulty": "easy",
-    "displayOrder": "mixed",
-    "matchedCount": 0,
-    "totalCount": 5,
-    "durationSeconds": 180,
-    "status": "lost",
-    "completedAt": "2026-05-22T06:24:09.953Z"
-  },
-  {
-    "id": "game-1779425720672-647bcr",
-    "packId": "pack-1779425494870-rqybkm",
-    "packName": "测试组1",
-    "mode": "single",
-    "difficulty": "easy",
-    "displayOrder": "mixed",
-    "matchedCount": 0,
-    "totalCount": 5,
-    "durationSeconds": 180,
-    "status": "lost",
-    "completedAt": "2026-05-22T04:55:20.672Z"
-  },
-  {
-    "id": "game-1779425520187-ju45b1",
-    "packId": "pack-1779425494870-rqybkm",
-    "packName": "测试组1",
-    "mode": "single",
-    "difficulty": "easy",
-    "displayOrder": "mixed",
-    "matchedCount": 5,
-    "totalCount": 5,
-    "durationSeconds": 14,
+    "matchedCount": 2,
+    "totalCount": 2,
+    "durationSeconds": 4,
     "status": "won",
-    "completedAt": "2026-05-22T04:52:00.187Z"
+    "completedAt": "2026-05-22T07:48:00.812Z"
   }
 ]

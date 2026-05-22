@@ -1,8 +1,38 @@
 import { pinyin as toPinyin } from "/vendor/pinyin-pro.mjs";
 
+// Polyfill for CSS.escape (missing in old iOS Safari)
+if (typeof CSS === "undefined" || typeof CSS.escape !== "function") {
+  const cssEscape = (value) => {
+    const str = String(value);
+    let result = "";
+    for (let i = 0; i < str.length; i++) {
+      const code = str.charCodeAt(i);
+      if (code === 0) { result += "\uFFFD"; continue; }
+      if ((code >= 0x0001 && code <= 0x001F) || code === 0x007F ||
+          (i === 0 && code >= 0x0030 && code <= 0x0039) ||
+          (i === 1 && code >= 0x0030 && code <= 0x0039 && str.charCodeAt(0) === 0x002D)) {
+        result += `\\${code.toString(16)} `;
+      } else if (code >= 0x0080 || code === 0x002D || code === 0x005F ||
+                 (code >= 0x0030 && code <= 0x0039) ||
+                 (code >= 0x0041 && code <= 0x005A) ||
+                 (code >= 0x0061 && code <= 0x007A)) {
+        result += str[i];
+      } else {
+        result += `\\${str[i]}`;
+      }
+    }
+    return result;
+  };
+  if (typeof CSS === "undefined") {
+    window.CSS = { escape: cssEscape };
+  } else {
+    CSS.escape = cssEscape;
+  }
+}
+
 function randomUUID() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return randomUUID();
+    return crypto.randomUUID();
   }
   // Fallback for non-secure contexts (HTTP over Tailscale, mobile browsers)
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
@@ -748,7 +778,7 @@ let cachedColumnWidth = window.innerWidth;
 
 function bubbleColumnCount(tileCount) {
   const width = cachedColumnWidth;
-  let columns = 4;
+  let columns;
 
   if (width >= 1800) {
     columns = 10;
@@ -760,6 +790,10 @@ function bubbleColumnCount(tileCount) {
     columns = 7;
   } else if (width >= 760) {
     columns = 6;
+  } else if (width >= 480) {
+    columns = 4;
+  } else {
+    columns = 3;
   }
 
   return Math.max(1, Math.min(columns, tileCount || 1));
