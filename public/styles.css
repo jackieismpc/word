@@ -208,12 +208,15 @@ button {
   position: relative;
 }
 
-.sidebar.is-compact .nav-button::after {
-  content: attr(title);
-  position: absolute;
-  left: calc(100% + 10px);
-  top: 50%;
-  transform: translateY(-50%);
+.nav-tooltip {
+  display: none;
+}
+
+.sidebar.is-compact .nav-tooltip {
+  display: block;
+  position: fixed;
+  left: 80px;
+  top: auto;
   white-space: nowrap;
   padding: 6px 10px;
   border-radius: 10px;
@@ -224,10 +227,10 @@ button {
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.15s ease;
-  z-index: 100;
+  z-index: 9999;
 }
 
-.sidebar.is-compact .nav-button:hover::after {
+.sidebar.is-compact .nav-button:hover .nav-tooltip {
   opacity: 1;
 }
 
@@ -334,6 +337,16 @@ button {
   box-shadow: var(--shadow);
 }
 
+.timer-fixed {
+  position: fixed;
+  bottom: 20px;
+  right: 24px;
+  z-index: 50;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
 .timer-value {
   font-size: clamp(24px, 4vw, 38px);
   font-weight: 900;
@@ -349,9 +362,9 @@ button {
 
 @keyframes bubble-float {
   0%, 100% { transform: translateY(0px) translateX(0px); }
-  25% { transform: translateY(-8px) translateX(2px); }
-  50% { transform: translateY(-5px) translateX(-3px); }
-  75% { transform: translateY(-10px) translateX(1px); }
+  25% { transform: translateY(-6px) translateX(2px); }
+  50% { transform: translateY(-4px) translateX(-2px); }
+  75% { transform: translateY(-8px) translateX(1px); }
 }
 
 @keyframes hint-pulse {
@@ -385,7 +398,7 @@ button {
     inset 0 2px 0 rgba(255, 255, 255, 0.28),
     0 18px 36px rgba(24, 39, 75, 0.16);
   overflow: hidden;
-  animation: bubble-float var(--float-duration, 3s) ease-in-out infinite;
+  animation: bubble-float var(--float-duration, 4.5s) ease-in-out infinite;
   animation-delay: var(--float-delay, 0s);
 }
 

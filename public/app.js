@@ -86,6 +86,7 @@ const state = {
   dictionaryIndex: new Map(),
   multiModeInput: "",
   multiModePreview: [],
+  multiModeUnmatched: [],
   searchQuery: "",
   ui: loadUiState(),
   game: createGameState(),
@@ -234,7 +235,9 @@ function detectStructuredPair(line) {
     return null;
   }
 
-  const matchers = [/^(.+?)=(.+)$/, /^(.+?)\s+(.+)$/, /^(.+?)\s*[-—:：]\s*(.+)$/];
+  // Only match explicit separators (=, -, —, :, ：), NOT plain space
+  // Plain space means multiple words, not a pair
+  const matchers = [/^(.+?)=(.+)$/, /^(.+?)\s*[-—:：]\s*(.+)$/];
   for (const matcher of matchers) {
     const matched = raw.match(matcher);
     if (!matched) {
@@ -267,7 +270,32 @@ function resolveWordsFromDictionary(raw) {
 }
 
 function refreshMultiModePreview() {
-  state.multiModePreview = resolveWordsFromDictionary(state.multiModeInput);
+  const lines = String(state.multiModeInput || "").split(/\n/);
+  const matched = [];
+  const unmatched = [];
+  const seen = new Set();
+
+  for (const line of lines) {
+    const structured = detectStructuredPair(line);
+    if (structured && !seen.has(structured.en)) {
+      seen.add(structured.en);
+      matched.push(structured);
+      continue;
+    }
+    for (const word of extractWordsFromText(line)) {
+      if (seen.has(word)) continue;
+      seen.add(word);
+      const hit = lookupDictionaryWord(word);
+      if (hit) {
+        matched.push({ en: hit.word, zh: hit.chinese });
+      } else {
+        unmatched.push({ en: word, zh: "" });
+      }
+    }
+  }
+
+  state.multiModePreview = matched;
+  state.multiModeUnmatched = unmatched;
 }
 
 function parsePreviewWords(raw) {
@@ -680,9 +708,11 @@ function startSingleGame(pack = currentPack()) {
 }
 
 function startMultiModeGame() {
-  const words = state.multiModePreview.length
+  const matched = state.multiModePreview.length
     ? state.multiModePreview
     : resolveWordsFromDictionary(state.multiModeInput);
+  const manualWords = (state.multiModeUnmatched || []).filter((item) => item.zh.trim());
+  const words = [...matched, ...manualWords];
 
   if (!words.length) {
     showToast("error", "没有在字典里找到可匹配的英文单词。");
@@ -801,7 +831,15 @@ function useHint() {
 
 function updateSearch(query) {
   state.searchQuery = query;
-  render();
+  // Update bubble highlights without re-rendering the whole DOM (prevents focus loss)
+  document.querySelectorAll(".bubble").forEach((el) => {
+    const tileId = el.dataset.action?.replace("tile:", "");
+    if (!tileId) return;
+    const tile = state.game.tiles.find((t) => t.id === tileId);
+    if (!tile) return;
+    const hit = searchMatchesTile(tile);
+    el.classList.toggle("is-hint", hit || state.game.hintPairId === tile.pairId);
+  });
 }
 
 function gameStatusMessage() {
@@ -1092,9 +1130,10 @@ function renderSidebar() {
         ${actions
           .map(
             ([label, action, icon], index) => `
-              <button class="nav-button ${index === 4 ? "is-accent" : ""}" data-action="${action}" title="${text(label)}">
+              <button class="nav-button ${index === 4 ? "is-accent" : ""}" data-action="${action}">
                 <span class="nav-icon">${text(icon)}</span>
                 <span class="nav-label">${text(label)}</span>
+                <span class="nav-tooltip">${text(label)}</span>
               </button>
             `,
           )
@@ -1117,12 +1156,11 @@ function renderSidebar() {
 }
 
 function renderTimer() {
+  if (state.game.status === "idle") return "";
   return `
-    <div class="timer">
-      <div>
-        <div class="muted">当前局面</div>
-        <div class="timer-value">${text(formatTime(currentTimerValue()))}</div>
-      </div>
+    <div class="timer timer-fixed">
+      <div class="muted">当前局面</div>
+      <div class="timer-value">${text(formatTime(currentTimerValue()))}</div>
       <div class="pill">${text(state.game.mode === "multi" ? "多词模式" : difficultyLabel())}</div>
     </div>
   `;
@@ -1215,6 +1253,7 @@ function renderSingleControls() {
 
 function renderMultiControls() {
   const preview = state.multiModePreview;
+  const unmatched = state.multiModeUnmatched || [];
   return `
     <div class="bottom-bar">
       <textarea class="textarea" id="multi-mode-input" placeholder="输入内容，空格或回车隔开。系统会从本地字典里匹配中译。">${text(state.multiModeInput)}</textarea>
@@ -1222,18 +1261,28 @@ function renderMultiControls() {
         ${
           state.multiModeInput.trim()
             ? preview.length
-              ? `已识别 ${preview.length} 个词：${text(preview.map((item) => item.en).slice(0, 6).join("、"))}${preview.length > 6 ? "…" : ""}`
+              ? `已识别 ${preview.length} 个词：${text(preview.map((item) => item.en).slice(0, 6).join("、"))}${preview.length > 6 ? "…" : ""}${unmatched.length ? `，还有 ${unmatched.length} 个词未识别，请手动补全中文。` : ""}`
               : "当前输入里还没有识别到可匹配词条。"
             : "输入一段英文内容，系统会先拆分再从本地字典匹配中译。"
         }
       </div>
+      ${unmatched.length ? `
+        <div class="preview-table">
+          ${unmatched.map((item) => `
+            <div class="preview-row">
+              <span class="pill">${text(item.en)}</span>
+              <input class="inline-input ${item.zh ? "" : "is-warning"}" data-role="multi-unmatched-zh" data-en="${text(item.en)}" placeholder="请输入中文释义" value="${text(item.zh)}" />
+            </div>
+          `).join("")}
+        </div>
+      ` : ""}
       <div class="control-row">
         <button class="secondary-button" data-action="switch-mode:single">单词模式</button>
         <button class="ghost-button" data-action="multi-split">拆分</button>
         <button class="ghost-button" data-action="multi-clear">清空所有条目</button>
         <div class="control-spacer"></div>
-        <div class="pill">已识别 ${preview.length} 词</div>
-        <button class="primary-button" data-action="start-multi">开始匹配</button>
+        <div class="pill">已识别 ${preview.length + unmatched.filter(i => i.zh).length} 词</div>
+        <button class="primary-button" data-action="start-multi" ${preview.length + unmatched.filter(i => i.zh).length >= 2 ? "" : "disabled"}>开始匹配</button>
       </div>
     </div>
   `;
@@ -1241,6 +1290,7 @@ function renderMultiControls() {
 
 function renderMultiModePreviewOnly() {
   const preview = state.multiModePreview;
+  const unmatched = state.multiModeUnmatched || [];
   const bar = document.querySelector("#multi-mode-input ~ .message-bar");
   if (!bar) {
     render();
@@ -1249,21 +1299,24 @@ function renderMultiModePreviewOnly() {
   bar.className = `message-bar ${preview.length ? "is-success" : ""}`;
   bar.textContent = state.multiModeInput.trim()
     ? preview.length
-      ? `已识别 ${preview.length} 个词：${preview.map((item) => item.en).slice(0, 6).join("、")}${preview.length > 6 ? "…" : ""}`
+      ? `已识别 ${preview.length} 个词：${preview.map((item) => item.en).slice(0, 6).join("、")}${preview.length > 6 ? "…" : ""}${unmatched.length ? `，还有 ${unmatched.length} 个词未识别，请手动补全中文。` : ""}`
       : "当前输入里还没有识别到可匹配词条。"
     : "输入一段英文内容，系统会先拆分再从本地字典匹配中译。";
   const pill = document.querySelector(".bottom-bar .control-row .pill");
-  if (pill) pill.textContent = `已识别 ${preview.length} 词`;
+  if (pill) pill.textContent = `已识别 ${preview.length + unmatched.filter(i => i.zh).length} 词`;
+  // Re-render unmatched section if needed
+  const existingTable = document.querySelector("[data-role='multi-unmatched-zh']")?.closest(".preview-table");
+  if (unmatched.length && !existingTable) {
+    render();
+  }
 }
 
 function renderGameView() {
   return `
     <section class="game-view">
-      <div class="game-overlay">
-        ${renderTimer()}
-      </div>
       <div class="board">${renderBubbles()}</div>
       ${state.game.mode === "multi" ? renderMultiControls() : renderSingleControls()}
+      ${renderTimer()}
     </section>
   `;
 }
@@ -1490,16 +1543,16 @@ function renderHistoryDrawer() {
 function renderHelpDrawer() {
   return `
     <div class="drawer-mask" data-action="close-drawer"></div>
-    <aside class="drawer drawer-help" style="width: min(${Math.round(state.ui.helpWidth)}px, calc(100vw - 20px))">
-      <div class="drawer-resizer" data-role="help-resizer"></div>
+    <aside class="drawer drawer-help">
       <div class="drawer-header">
         <div>
           <div class="drawer-title">使用帮助</div>
-          <div class="drawer-subtitle">保留了原站点的飞书帮助文档入口，支持拖拽左边边缘调整宽度。</div>
         </div>
         <button class="icon-button" data-action="close-drawer">×</button>
       </div>
-      <iframe class="help-frame" src="${text(state.helpUrl)}" title="使用帮助"></iframe>
+      <div class="drawer-body" style="display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--muted);">
+        遇到Bug请联系master进行维护！
+      </div>
     </aside>
   `;
 }
@@ -1724,16 +1777,18 @@ function bindDelegatedEvents() {
     if (action === "multi-clear") {
       state.multiModeInput = "";
       state.multiModePreview = [];
+      state.multiModeUnmatched = [];
       render();
       return;
     }
     if (action === "multi-split") {
       refreshMultiModePreview();
       render();
+      const total = state.multiModePreview.length + (state.multiModeUnmatched || []).length;
       showToast(
-        state.multiModePreview.length ? "success" : "info",
-        state.multiModePreview.length
-          ? `已整理出 ${state.multiModePreview.length} 个匹配词条。`
+        total ? "success" : "info",
+        total
+          ? `已整理出 ${state.multiModePreview.length} 个匹配词条${state.multiModeUnmatched.length ? `，${state.multiModeUnmatched.length} 个未识别，请手动补全中文。` : "。"}`
           : "当前没有识别到可匹配词条。",
       );
       return;
@@ -1927,6 +1982,24 @@ function bindDelegatedEvents() {
         state.addWords.unmatched = state.addWords.preview
           .filter((entry) => entry.unresolved)
           .map((entry) => entry.en);
+      }
+      return;
+    }
+    if (target.dataset.role === "multi-unmatched-zh") {
+      const en = target.dataset.en;
+      const item = (state.multiModeUnmatched || []).find((entry) => entry.en === en);
+      if (item) {
+        item.zh = target.value;
+        const pill = document.querySelector(".bottom-bar .control-row .pill");
+        if (pill) {
+          const total = state.multiModePreview.length + state.multiModeUnmatched.filter(i => i.zh).length;
+          pill.textContent = `已识别 ${total} 词`;
+        }
+        const btn = document.querySelector("[data-action='start-multi']");
+        if (btn) {
+          const total = state.multiModePreview.length + state.multiModeUnmatched.filter(i => i.zh).length;
+          btn.disabled = total < 2;
+        }
       }
     }
   });
