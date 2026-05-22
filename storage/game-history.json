@@ -1,1 +1,41 @@
-[]
+[
+  {
+    "id": "game-1779412556175-or0ock",
+    "packId": "pack-1777381895014-pu3hlu",
+    "packName": "小学名词库 · 模板",
+    "mode": "single",
+    "difficulty": "hard",
+    "displayOrder": "mixed",
+    "matchedCount": 0,
+    "totalCount": 18,
+    "durationSeconds": 0,
+    "status": "lost",
+    "completedAt": "2026-05-22T01:15:56.175Z"
+  },
+  {
+    "id": "game-1779411922175-bod9ip",
+    "packId": "pack-1777381895014-pu3hlu",
+    "packName": "小学名词库 · 模板",
+    "mode": "single",
+    "difficulty": "hard",
+    "displayOrder": "mixed",
+    "matchedCount": 0,
+    "totalCount": 12,
+    "durationSeconds": 0,
+    "status": "lost",
+    "completedAt": "2026-05-22T01:05:22.175Z"
+  },
+  {
+    "id": "game-1779411512128-gxpb7g",
+    "packId": "pack-1777381895014-pu3hlu",
+    "packName": "小学名词库 · 模板",
+    "mode": "single",
+    "difficulty": "hard",
+    "displayOrder": "mixed",
+    "matchedCount": 0,
+    "totalCount": 12,
+    "durationSeconds": 0,
+    "status": "lost",
+    "completedAt": "2026-05-22T00:58:32.128Z"
+  }
+]

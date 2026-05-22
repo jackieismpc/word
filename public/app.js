@@ -928,6 +928,9 @@ function updateUi(patch) {
 function openDrawer(name) {
   state.drawer = name;
   render();
+  if (name === "add-words") {
+    requestAnimationFrame(() => document.getElementById("add-words-raw")?.focus());
+  }
 }
 
 function closeDrawer() {
@@ -1153,11 +1156,13 @@ function renderBubbles() {
           const hinted = state.game.hintPairId === tile.pairId;
           const searchHit = searchMatchesTile(tile);
           const [from, to] = tile.color || COLORS[0];
+          const floatDelay = `-${((tile.id.charCodeAt(0) * 7 + tile.id.charCodeAt(1) * 3) % 20) * 0.1}s`;
+          const floatDuration = `${2.5 + ((tile.id.charCodeAt(0) + tile.id.charCodeAt(2)) % 15) * 0.1}s`;
           return `
             <button
               class="bubble ${hidden ? "is-hidden" : ""} ${selected ? "is-selected" : ""} ${hinted || searchHit ? "is-hint" : ""}"
               data-action="tile:${tile.id}"
-              style="background: linear-gradient(135deg, ${from}, ${to});"
+              style="background: linear-gradient(135deg, ${from}, ${to}); --float-delay: ${floatDelay}; --float-duration: ${floatDuration};"
             >
               <span class="bubble-label">${text(tile.label)}</span>
             </button>
@@ -1232,6 +1237,23 @@ function renderMultiControls() {
       </div>
     </div>
   `;
+}
+
+function renderMultiModePreviewOnly() {
+  const preview = state.multiModePreview;
+  const bar = document.querySelector("#multi-mode-input ~ .message-bar");
+  if (!bar) {
+    render();
+    return;
+  }
+  bar.className = `message-bar ${preview.length ? "is-success" : ""}`;
+  bar.textContent = state.multiModeInput.trim()
+    ? preview.length
+      ? `已识别 ${preview.length} 个词：${preview.map((item) => item.en).slice(0, 6).join("、")}${preview.length > 6 ? "…" : ""}`
+      : "当前输入里还没有识别到可匹配词条。"
+    : "输入一段英文内容，系统会先拆分再从本地字典匹配中译。";
+  const pill = document.querySelector(".bottom-bar .control-row .pill");
+  if (pill) pill.textContent = `已识别 ${preview.length} 词`;
 }
 
 function renderGameView() {
@@ -1727,9 +1749,11 @@ function bindDelegatedEvents() {
       return;
     }
     if (action === "add-words-autocomplete") {
+      const activeId = document.activeElement?.id;
       const parsed = parsePreviewWords(state.addWords.raw);
       syncAddWordsPreview(parsed.preview);
       render();
+      if (activeId) document.getElementById(activeId)?.focus();
       if (!state.addWords.preview.length) {
         showToast("error", "没有识别到可用词条，请先准备本地字典。");
       } else if (state.addWords.unmatched.length) {
@@ -1863,7 +1887,7 @@ function bindDelegatedEvents() {
     if (target.id === "multi-mode-input") {
       state.multiModeInput = target.value;
       refreshMultiModePreview();
-      render();
+      renderMultiModePreviewOnly();
       return;
     }
     if (target.id === "add-words-raw") {
