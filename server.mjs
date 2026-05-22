@@ -1,5 +1,5 @@
 import { createReadStream, existsSync, readFileSync, rmSync } from "node:fs";
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -62,7 +62,9 @@ async function readJsonFile(filePath, fallback) {
 }
 
 async function writeJsonFile(filePath, value) {
-  await writeFile(filePath, JSON.stringify(value, null, 2), "utf8");
+  const tmp = `${filePath}.tmp`;
+  await writeFile(tmp, JSON.stringify(value, null, 2), "utf8");
+  await rename(tmp, filePath);
 }
 
 function createId(prefix) {
@@ -230,18 +232,23 @@ function mergePacks(preferred, existing) {
 }
 
 async function fetchJson(url) {
-  const response = await fetch(url, {
-    headers: {
-      "User-Agent": "word-match-local/1.0",
-      Accept: "application/json,text/plain,*/*",
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`request_failed:${response.status}`);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "word-match-local/1.0",
+        Accept: "application/json,text/plain,*/*",
+      },
+    });
+    if (!response.ok) {
+      throw new Error(`request_failed:${response.status}`);
+    }
+    return response.json();
+  } finally {
+    clearTimeout(timer);
   }
-
-  return response.json();
 }
 
 async function ensureStorage() {
@@ -449,9 +456,16 @@ async function runOneClickPrepare(options = {}) {
   };
 }
 
+const MAX_BODY_SIZE = 10 * 1024 * 1024; // 10MB
+
 async function readRequestBody(req) {
   const chunks = [];
+  let total = 0;
   for await (const chunk of req) {
+    total += chunk.length;
+    if (total > MAX_BODY_SIZE) {
+      throw Object.assign(new Error("payload_too_large"), { statusCode: 413 });
+    }
     chunks.push(chunk);
   }
   const raw = Buffer.concat(chunks).toString("utf8");
@@ -490,9 +504,10 @@ async function serveStatic(req, res, pathname) {
       sendText(res, 404, "Not found");
       return;
     }
+    const isHtml = target.endsWith(".html");
     res.writeHead(200, {
       "Content-Type": getMimeType(target),
-      "Cache-Control": "no-store",
+      "Cache-Control": isHtml ? "no-store" : "max-age=3600",
     });
     createReadStream(target).pipe(res);
   } catch {
@@ -594,10 +609,10 @@ async function handleApi(req, res, pathname) {
       return;
     }
     const packs = await getPacks();
-    const merged = [...imported, ...packs.items];
+    const items = mergePacks(imported, packs.items);
     await savePacks({
       activePackId: imported[0]?.id || packs.activePackId,
-      items: merged,
+      items,
     });
     sendJson(res, 200, { ok: true, count: imported.length });
     return;
@@ -701,8 +716,10 @@ async function handleApi(req, res, pathname) {
       status: body.status || "won",
       completedAt: nowIso(),
     };
-    await saveGameHistory([entry, ...history].slice(0, 100));
-    sendJson(res, 200, { ok: true, entry });
+    const next = [entry, ...history];
+    const truncated = next.length > 100;
+    await saveGameHistory(next.slice(0, 100));
+    sendJson(res, 200, { ok: true, entry, truncated });
     return;
   }
 
@@ -732,8 +749,9 @@ const server = http.createServer(async (req, res) => {
     }
     await serveStatic(req, res, url.pathname);
   } catch (error) {
-    sendJson(res, 500, {
-      error: "server_error",
+    const statusCode = error.statusCode || 500;
+    sendJson(res, statusCode, {
+      error: statusCode === 413 ? "payload_too_large" : "server_error",
       detail: error instanceof Error ? error.message : String(error),
     });
   }

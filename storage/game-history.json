@@ -1,5 +1,31 @@
 [
   {
+    "id": "game-1779434093881-o4akfs",
+    "packId": "pack-1779425494870-rqybkm",
+    "packName": "测试组1",
+    "mode": "single",
+    "difficulty": "easy",
+    "displayOrder": "mixed",
+    "matchedCount": 0,
+    "totalCount": 5,
+    "durationSeconds": 180,
+    "status": "lost",
+    "completedAt": "2026-05-22T07:14:53.881Z"
+  },
+  {
+    "id": "game-1779433732811-30euj4",
+    "packId": "pack-1779425494870-rqybkm",
+    "packName": "测试组1",
+    "mode": "single",
+    "difficulty": "easy",
+    "displayOrder": "mixed",
+    "matchedCount": 0,
+    "totalCount": 5,
+    "durationSeconds": 180,
+    "status": "lost",
+    "completedAt": "2026-05-22T07:08:52.811Z"
+  },
+  {
     "id": "game-1779431049953-aqndck",
     "packId": "pack-1779425494870-rqybkm",
     "packName": "测试组1",

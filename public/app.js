@@ -1,5 +1,16 @@
 import { pinyin as toPinyin } from "/vendor/pinyin-pro.mjs";
 
+function randomUUID() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return randomUUID();
+  }
+  // Fallback for non-secure contexts (HTTP over Tailscale, mobile browsers)
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
 const COLORS = [
   ["#22c55e", "#4ade80"],
   ["#06b6d4", "#38bdf8"],
@@ -437,7 +448,7 @@ function parsePreviewWords(raw) {
   }
 
   const matchedPreview = dedupeBy(pairs, (item) => item.en).map((item) => ({
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     en: item.en,
     zh: item.zh,
     unresolved: false,
@@ -447,7 +458,7 @@ function parsePreviewWords(raw) {
   const unmatchedPreview = [...unmatched]
     .filter((word) => !resolvedEnglishSet.has(word))
     .map((word) => ({
-      id: crypto.randomUUID(),
+      id: randomUUID(),
       en: word,
       zh: "",
       unresolved: true,
@@ -496,34 +507,46 @@ function syncAddWordsPreview(preview) {
 }
 
 async function api(path, options = {}) {
-  const response = await fetch(path, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-    ...options,
-  });
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), 30000);
+  try {
+    const response = await fetch(path, {
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+      },
+      ...options,
+    });
 
-  if (!response.ok) {
-    let detail = response.statusText;
-    try {
-      const payload = await response.json();
-      detail = payload.detail || payload.error || detail;
-    } catch {
-      // Ignore payload decoding failures.
+    if (!response.ok) {
+      let detail = response.statusText;
+      try {
+        const payload = await response.json();
+        detail = payload.detail || payload.error || detail;
+      } catch {
+        // Ignore payload decoding failures.
+      }
+      throw new Error(detail || `HTTP ${response.status}`);
     }
-    throw new Error(detail || `HTTP ${response.status}`);
-  }
 
-  if (response.headers.get("content-type")?.includes("application/json")) {
-    return response.json();
+    if (response.headers.get("content-type")?.includes("application/json")) {
+      return response.json();
+    }
+    return response.text();
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error("请求超时，请检查网络连接。");
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timer);
   }
-  return response.text();
 }
 
 function showToast(kind, message) {
   state.message = {
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     kind,
     message,
   };
@@ -559,10 +582,15 @@ function playToneFallback(type) {
   oscillator.stop(context.currentTime + (type === "success" ? 0.16 : 0.2));
 }
 
-function getCachedAudio(url) {
+function getCachedAudio(url, type) {
   if (!getCachedAudio.cache.has(url)) {
+    if (getCachedAudio.cache.size >= 50) {
+      const firstKey = getCachedAudio.cache.keys().next().value;
+      getCachedAudio.cache.delete(firstKey);
+    }
     const audio = new Audio(url);
     audio.preload = "auto";
+    audio.onerror = () => playToneFallback(type);
     getCachedAudio.cache.set(url, audio);
   }
   return getCachedAudio.cache.get(url);
@@ -582,8 +610,9 @@ function playSound(type) {
   }
 
   try {
-    const audio = getCachedAudio(url).cloneNode();
+    const audio = getCachedAudio(url, type);
     audio.volume = type === "success" ? 0.6 : 0.5;
+    audio.currentTime = 0;
     audio.play().catch(() => playToneFallback(type));
   } catch {
     playToneFallback(type);
@@ -595,19 +624,22 @@ function pronounceWord(word) {
     return;
   }
 
-  const remoteAudio = new Audio(
-    `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(word)}&type=2`,
-  );
-  remoteAudio.play().catch(() => {
-    if (!("speechSynthesis" in window)) {
-      return;
-    }
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(word);
-    utterance.lang = "en-US";
-    utterance.rate = 0.9;
-    window.speechSynthesis.speak(utterance);
-  });
+  window.clearTimeout(pronounceWord.timer);
+  pronounceWord.timer = window.setTimeout(() => {
+    const remoteAudio = new Audio(
+      `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(word)}&type=2`,
+    );
+    remoteAudio.play().catch(() => {
+      if (!("speechSynthesis" in window)) {
+        return;
+      }
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(word);
+      utterance.lang = "en-US";
+      utterance.rate = 0.9;
+      window.speechSynthesis.speak(utterance);
+    });
+  }, 80);
 }
 
 function assignIndependentColors(tiles) {
@@ -646,18 +678,22 @@ function assignIndependentColors(tiles) {
 function buildSingleModeTiles(words) {
   const displayOrder = state.settings.displayOrder;
   const zhTiles = words.map((word) => ({
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     pairId: word.en,
     type: "zh",
     label: word.zh,
     speak: word.en,
+    floatDelay: `-${(Math.random() * 2).toFixed(2)}s`,
+    floatDuration: `${(2.5 + Math.random() * 1.5).toFixed(2)}s`,
   }));
   const enTiles = words.map((word) => ({
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     pairId: word.en,
     type: "en",
     label: word.en,
     speak: word.en,
+    floatDelay: `-${(Math.random() * 2).toFixed(2)}s`,
+    floatDuration: `${(2.5 + Math.random() * 1.5).toFixed(2)}s`,
   }));
 
   let tiles;
@@ -708,8 +744,10 @@ function buildMultiModeDraftFromWords(words) {
     .join("\n");
 }
 
+let cachedColumnWidth = window.innerWidth;
+
 function bubbleColumnCount(tileCount) {
-  const width = window.innerWidth || 1440;
+  const width = cachedColumnWidth;
   let columns = 4;
 
   if (width >= 1800) {
@@ -773,6 +811,9 @@ function recordGameIfNeeded(status) {
   })
     .then((result) => {
       state.gameHistory = [result.entry, ...state.gameHistory].slice(0, 100);
+      if (result.truncated) {
+        showToast("info", "游戏历史已达上限（100 条），最早的记录已自动删除。");
+      }
       render();
     })
     .catch(() => {
@@ -1147,7 +1188,10 @@ function beginHelpResize(startX) {
   function onMove(event) {
     const next = clamp(startWidth + (startX - event.clientX), 420, window.innerWidth - 32);
     state.ui.helpWidth = next;
-    render();
+    const drawer = document.querySelector(".drawer-help");
+    if (drawer instanceof HTMLElement) {
+      drawer.style.width = `${next}px`;
+    }
   }
 
   function onUp() {
@@ -1228,9 +1272,19 @@ async function importPacksFromFile(file) {
   if (!file) {
     return;
   }
+  if (file.size > 10 * 1024 * 1024) {
+    showToast("error", "文件过大，最大支持 10MB。");
+    return;
+  }
   const raw = await file.text();
+  let parsed;
   try {
-    const parsed = JSON.parse(raw);
+    parsed = JSON.parse(raw);
+  } catch {
+    showToast("error", "文件格式错误，请选择有效的 JSON 文件。");
+    return;
+  }
+  try {
     await api("/api/packs/import", {
       method: "POST",
       body: JSON.stringify({ json: parsed }),
@@ -1246,9 +1300,19 @@ async function importDictionaryFromFile(file) {
   if (!file) {
     return;
   }
+  if (file.size > 10 * 1024 * 1024) {
+    showToast("error", "文件过大，最大支持 10MB。");
+    return;
+  }
   const raw = await file.text();
+  let parsed;
   try {
-    const parsed = JSON.parse(raw);
+    parsed = JSON.parse(raw);
+  } catch {
+    showToast("error", "文件格式错误，请选择有效的 JSON 文件。");
+    return;
+  }
+  try {
     await api("/api/dictionary/import", {
       method: "POST",
       body: JSON.stringify({ json: parsed }),
@@ -1355,8 +1419,8 @@ function renderBubbles() {
           const hinted = state.game.hintPairId === tile.pairId;
           const searchHit = searchMatchesTile(tile);
           const [from, to] = tile.color || COLORS[0];
-          const floatDelay = `-${((tile.id.charCodeAt(0) * 7 + tile.id.charCodeAt(1) * 3) % 20) * 0.1}s`;
-          const floatDuration = `${2.5 + ((tile.id.charCodeAt(0) + tile.id.charCodeAt(2)) % 15) * 0.1}s`;
+          const floatDelay = tile.floatDelay;
+          const floatDuration = tile.floatDuration;
           return `
             <button
               class="bubble ${hidden ? "is-hidden" : ""} ${selected ? "is-selected" : ""} ${hinted || searchHit ? "is-hint" : ""}"
@@ -1864,6 +1928,8 @@ function bindDelegatedEvents() {
     return;
   }
 
+  let clickBusy = false;
+
   document.addEventListener("click", async (event) => {
     const actionNode = event.target.closest("[data-action]");
     if (!actionNode) {
@@ -1872,6 +1938,22 @@ function bindDelegatedEvents() {
 
     const action = actionNode.dataset.action;
 
+    // Tile clicks and non-async actions are always allowed
+    const isAsyncAction = !action.startsWith("tile:") &&
+      !["close-drawer", "toggle-sound", "toggle-pronounce", "display-order-next",
+        "difficulty-toggle", "toggle-controls", "hint", "restart", "switch-mode:multi",
+        "switch-mode:single", "multi-edit", "multi-clear", "multi-split",
+        "add-words-clear", "setup-collapse", "setup-expand", "view:dictionary", "view:game",
+      ].includes(action) && !action.startsWith("drawer:");
+
+    if (isAsyncAction && clickBusy) {
+      return;
+    }
+    if (isAsyncAction) {
+      clickBusy = true;
+    }
+
+    try {
     if (action === "close-drawer") {
       closeDrawer();
       return;
@@ -2122,6 +2204,11 @@ function bindDelegatedEvents() {
       await refreshBootstrap();
       showToast("success", "本地字典已清空。");
     }
+    } finally {
+      if (isAsyncAction) {
+        clickBusy = false;
+      }
+    }
   });
 
   document.addEventListener("input", (event) => {
@@ -2289,7 +2376,9 @@ function bindGlobalEvents() {
   });
 
   window.addEventListener("resize", () => {
+    cachedColumnWidth = window.innerWidth;
     syncGameLayoutMetrics();
+    render();
   });
 
   state.globalEventsBound = true;
