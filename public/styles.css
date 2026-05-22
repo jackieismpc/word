@@ -99,32 +99,16 @@ button {
   border-radius: 18px;
 }
 
-.sidebar.is-compact .brand-copy {
-  display: none;
-}
-
 .brand-mark {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 14px;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
   color: white;
   background: linear-gradient(135deg, #0ea5e9, #2563eb);
-  font-size: 18px;
-  font-weight: 800;
-}
-
-.brand-title {
-  font-size: 16px;
-  font-weight: 800;
-}
-
-.brand-subtitle {
-  color: var(--muted);
-  font-size: 11px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  font-size: 26px;
+  font-weight: 900;
 }
 
 .nav {
@@ -263,6 +247,8 @@ button {
 }
 
 .game-view {
+  --timer-safe-width: 0px;
+  --timer-safe-height: 0px;
   position: relative;
   display: grid;
   grid-template-rows: 1fr;
@@ -336,6 +322,7 @@ button {
   border-radius: 18px;
   background: var(--panel-strong);
   box-shadow: var(--shadow);
+  flex-wrap: nowrap;
 }
 
 .timer-value {
@@ -347,7 +334,11 @@ button {
 .board {
   position: relative;
   min-height: 0;
-  padding: 10px 12px 12px;
+  padding:
+    calc(var(--timer-safe-height) + 12px)
+    calc(var(--timer-safe-width) + 12px)
+    12px
+    calc(12px + (var(--timer-safe-width) * 0.42));
   overflow: auto;
 }
 
@@ -364,21 +355,25 @@ button {
 }
 
 .bubbles {
+  --bubble-size: clamp(92px, 8.2vw, 132px);
+  --bubble-gap: clamp(14px, 1.6vw, 24px);
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
   justify-content: center;
   align-content: flex-start;
-  gap: 12px;
-  padding: 12px 12px 16px;
+  gap: var(--bubble-gap);
+  max-width: calc((var(--bubble-columns, 8) * var(--bubble-size)) + ((var(--bubble-columns, 8) - 1) * var(--bubble-gap)));
+  margin: 0 auto;
+  padding: 8px 6px 16px;
 }
 
 .bubble {
+  flex: 0 0 var(--bubble-size);
   position: relative;
   display: grid;
   place-items: center;
-  width: clamp(80px, 8.5vw, 130px);
-  height: clamp(80px, 8.5vw, 130px);
+  width: var(--bubble-size);
+  height: var(--bubble-size);
   padding: 8px;
   border: 0;
   border-radius: 999px;
@@ -429,10 +424,13 @@ button {
   font-weight: 800;
   line-height: 1.2;
   word-break: break-word;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
   overflow: hidden;
-  text-overflow: ellipsis;
   max-width: 90%;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .bottom-bar {
@@ -949,6 +947,15 @@ button {
   .game-overlay {
     top: 14px;
     right: 14px;
+  }
+
+  .board {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .bubbles {
+    --bubble-size: clamp(84px, 16vw, 112px);
   }
 }
 

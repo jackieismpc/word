@@ -17,6 +17,7 @@ const SOUND_URLS = {
 
 const UI_STATE_KEY = "word-match-local-ui-v2";
 const GAME_DURATION_SECONDS = 180;
+const TARGET_PAIR_COUNT = 15;
 const DEFAULT_UI = {
   helpWidth: 560,
   setupBannerCollapsed: true,
@@ -88,6 +89,7 @@ const state = {
   multiModeInput: "",
   multiModePreview: [],
   multiModeUnmatched: [],
+  multiModeWords: [],
   searchQuery: "",
   ui: loadUiState(),
   game: createGameState(),
@@ -110,6 +112,7 @@ function createGameState() {
     packId: null,
     packName: "",
     hintPairId: null,
+    hintUsed: false,
     hasRecorded: false,
   };
 }
@@ -378,6 +381,25 @@ function updateTimerUi() {
   if (modeNode) {
     modeNode.textContent = state.game.mode === "multi" ? "多词模式" : difficultyLabel();
   }
+
+  syncGameLayoutMetrics();
+}
+
+function syncGameLayoutMetrics() {
+  const view = document.querySelector(".game-view");
+  if (!(view instanceof HTMLElement)) {
+    return;
+  }
+
+  const timer = view.querySelector("[data-role='game-timer']");
+  if (!(timer instanceof HTMLElement) || state.game.status === "idle") {
+    view.style.setProperty("--timer-safe-width", "0px");
+    view.style.setProperty("--timer-safe-height", "0px");
+    return;
+  }
+
+  view.style.setProperty("--timer-safe-width", `${Math.ceil(timer.offsetWidth + 20)}px`);
+  view.style.setProperty("--timer-safe-height", `${Math.ceil(timer.offsetHeight + 16)}px`);
 }
 
 function parsePreviewWords(raw) {
@@ -672,17 +694,37 @@ function currentPlayedSeconds() {
 }
 
 function getSingleModePairCount() {
+  return TARGET_PAIR_COUNT;
+}
+
+function sampleGameWords(words) {
+  return shuffle(words).slice(0, Math.min(getSingleModePairCount(), words.length));
+}
+
+function buildMultiModeDraftFromWords(words) {
+  return (words || [])
+    .map((item) => `${normalizeEnglishCandidate(item.en)}=${String(item.zh || "").trim()}`)
+    .filter(Boolean)
+    .join("\n");
+}
+
+function bubbleColumnCount(tileCount) {
   const width = window.innerWidth || 1440;
-  if (width >= 1500) {
-    return 18;
+  let columns = 4;
+
+  if (width >= 1800) {
+    columns = 10;
+  } else if (width >= 1500) {
+    columns = 9;
+  } else if (width >= 1240) {
+    columns = 8;
+  } else if (width >= 980) {
+    columns = 7;
+  } else if (width >= 760) {
+    columns = 6;
   }
-  if (width >= 1200) {
-    return 15;
-  }
-  if (width >= 900) {
-    return 12;
-  }
-  return 9;
+
+  return Math.max(1, Math.min(columns, tileCount || 1));
 }
 
 function cycleDisplayOrder() {
@@ -775,7 +817,7 @@ function startSingleGame(pack = currentPack()) {
   }
 
   const sampleCount = Math.min(getSingleModePairCount(), pack.words.length);
-  const selectedWords = shuffle(pack.words).slice(0, sampleCount);
+  const selectedWords = sampleGameWords(pack.words).slice(0, sampleCount);
 
   state.game = {
     ...createGameState(),
@@ -789,7 +831,44 @@ function startSingleGame(pack = currentPack()) {
   };
   state.multiModeInput = "";
   state.multiModePreview = [];
+  state.multiModeUnmatched = [];
+  state.multiModeWords = [];
   state.searchQuery = "";
+  startTimer();
+  render();
+}
+
+function launchMultiModeGame(words) {
+  const selectedWords = dedupeBy(
+    (words || [])
+      .map((item) => ({
+        en: normalizeEnglishCandidate(item.en),
+        zh: String(item.zh || "").trim(),
+      }))
+      .filter((item) => item.en && item.zh),
+    (item) => item.en,
+  );
+
+  if (!selectedWords.length) {
+    showToast("error", "没有在字典里找到可匹配的英文单词。");
+    return;
+  }
+
+  state.multiModeWords = selectedWords;
+  state.game = {
+    ...createGameState(),
+    mode: "multi",
+    tiles: buildSingleModeTiles(selectedWords),
+    totalPairs: selectedWords.length,
+    status: "playing",
+    packId: null,
+    packName: "临时多词模式",
+    remainingSeconds: GAME_DURATION_SECONDS,
+  };
+  state.searchQuery = "";
+  state.multiModeInput = "";
+  state.multiModePreview = [];
+  state.multiModeUnmatched = [];
   startTimer();
   render();
 }
@@ -799,27 +878,21 @@ function startMultiModeGame() {
     ? state.multiModePreview
     : resolveWordsFromDictionary(state.multiModeInput);
   const manualWords = (state.multiModeUnmatched || []).filter((item) => item.zh.trim());
-  const words = [...matched, ...manualWords];
+  const words = sampleGameWords(dedupeBy([...matched, ...manualWords], (item) => normalizeEnglishCandidate(item.en)));
+  launchMultiModeGame(words);
+}
 
-  if (!words.length) {
-    showToast("error", "没有在字典里找到可匹配的英文单词。");
-    return;
-  }
-
+function openMultiComposer(words = state.multiModeWords) {
+  stopTimer();
   state.game = {
     ...createGameState(),
     mode: "multi",
-    tiles: buildSingleModeTiles(words),
-    totalPairs: words.length,
-    status: "playing",
-    packId: null,
-    packName: "临时多词模式",
-    remainingSeconds: GAME_DURATION_SECONDS,
   };
   state.searchQuery = "";
+  state.multiModeInput = buildMultiModeDraftFromWords(words);
   refreshMultiModePreview();
-  startTimer();
   render();
+  requestAnimationFrame(() => document.getElementById("multi-mode-input")?.focus());
 }
 
 function switchGameMode(mode) {
@@ -829,16 +902,15 @@ function switchGameMode(mode) {
 
   stopTimer();
   if (mode === "multi") {
-    state.game = {
-      ...createGameState(),
-      mode: "multi",
-    };
-    refreshMultiModePreview();
+    state.multiModeWords = [];
+    state.multiModeInput = "";
+    state.multiModePreview = [];
+    state.multiModeUnmatched = [];
+    openMultiComposer([]);
   } else {
     startSingleGame();
     return;
   }
-  render();
 }
 
 function handleTileClick(tileId) {
@@ -899,6 +971,11 @@ function useHint() {
     return;
   }
 
+  if (state.game.hintUsed) {
+    showToast("info", "提示机会已耗尽！");
+    return;
+  }
+
   const remaining = dedupeBy(
     state.game.tiles.filter((tile) => !state.game.matchedPairs.has(tile.pairId)),
     (tile) => tile.pairId,
@@ -908,6 +985,7 @@ function useHint() {
   }
 
   const picked = remaining[Math.floor(Math.random() * remaining.length)];
+  state.game.hintUsed = true;
   state.game.hintPairId = picked.pairId;
   render();
   window.setTimeout(() => {
@@ -1207,11 +1285,7 @@ function renderSidebar() {
   return `
     <aside class="sidebar ${compact ? "is-compact" : ""}">
       <div class="brand">
-        <div class="brand-mark">对</div>
-        <div class="brand-copy">
-          <div class="brand-title">单词对对碰</div>
-          <div class="brand-subtitle">Word Match Local</div>
-        </div>
+        <div class="brand-mark">W</div>
       </div>
       <div class="nav">
         ${actions
@@ -1273,7 +1347,7 @@ function renderBubbles() {
   }
 
   return `
-    <div class="bubbles">
+    <div class="bubbles" style="--bubble-columns: ${bubbleColumnCount(state.game.tiles.length)};">
       ${state.game.tiles
         .map((tile) => {
           const hidden = state.game.matchedPairs.has(tile.pairId);
@@ -1299,7 +1373,9 @@ function renderBubbles() {
 }
 
 function renderSingleControls() {
-  const pack = currentPack();
+  const pack = state.game.mode === "multi" ? { name: "临时多词模式" } : currentPack();
+  const modeAction = state.game.mode === "multi" ? "multi-edit" : "switch-mode:multi";
+  const modeLabel = state.game.mode === "multi" ? "重新配词" : "多词模式";
   return `
     <div class="bottom-bar">
       <div class="bottom-top">
@@ -1329,7 +1405,7 @@ function renderSingleControls() {
         </button>
         <button class="control-button" data-action="hint" title="提示配对词 (Ctrl / ⌘ + /)" ${state.game.mode !== "single" ? "disabled" : ""}>提示</button>
         <button class="control-button" data-action="restart">重开</button>
-        <button class="control-button" data-action="switch-mode:multi">多词模式</button>
+        <button class="control-button" data-action="${modeAction}">${modeLabel}</button>
         <div class="control-spacer"></div>
         <div class="pill">${text(pack?.name || "当前词包")}</div>
         <button class="secondary-button" data-action="drawer:help" title="使用说明 (?)">使用说明</button>
@@ -1404,13 +1480,20 @@ function renderMultiModePreviewOnly() {
 }
 
 function renderGameView() {
+  const controls = state.game.mode === "multi"
+    ? state.game.status === "idle"
+      ? renderMultiControls()
+      : !state.multiModeInput.trim() && !state.multiModePreview.length && !state.multiModeUnmatched.length
+        ? renderSingleControls()
+        : renderMultiControls()
+    : renderSingleControls();
   return `
     <section class="game-view">
       <div class="game-overlay">
         ${renderTimer()}
       </div>
       <div class="board">${renderBubbles()}</div>
-      ${state.game.mode === "multi" ? renderMultiControls() : renderSingleControls()}
+      ${controls}
     </section>
   `;
 }
@@ -1773,6 +1856,7 @@ function render() {
     ${renderDrawer()}
   `;
   restoreFocusedInput(focusedInput);
+  syncGameLayoutMetrics();
 }
 
 function bindDelegatedEvents() {
@@ -1859,7 +1943,13 @@ function bindDelegatedEvents() {
       return;
     }
     if (action === "restart") {
-      state.game.mode === "single" ? startSingleGame() : startMultiModeGame();
+      if (state.game.mode === "single") {
+        startSingleGame();
+      } else if (state.multiModeWords.length) {
+        launchMultiModeGame(state.multiModeWords);
+      } else {
+        startMultiModeGame();
+      }
       return;
     }
     if (action === "switch-mode:multi") {
@@ -1870,10 +1960,15 @@ function bindDelegatedEvents() {
       switchGameMode("single");
       return;
     }
+    if (action === "multi-edit") {
+      openMultiComposer(state.multiModeWords);
+      return;
+    }
     if (action === "multi-clear") {
       state.multiModeInput = "";
       state.multiModePreview = [];
       state.multiModeUnmatched = [];
+      state.multiModeWords = [];
       render();
       return;
     }
@@ -2191,6 +2286,10 @@ function bindGlobalEvents() {
       event.preventDefault();
       openDrawer("help");
     }
+  });
+
+  window.addEventListener("resize", () => {
+    syncGameLayoutMetrics();
   });
 
   state.globalEventsBound = true;
