@@ -5,6 +5,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createGzip } from "node:zlib";
 
+const NODE_MAJOR = Number(process.versions.node.split(".")[0] || 0);
+if (NODE_MAJOR < 18 || typeof globalThis.fetch !== "function") {
+  console.error(`Word Match requires Node.js 18 or newer. Current: ${process.version}`);
+  process.exit(1);
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
