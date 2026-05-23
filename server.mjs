@@ -502,8 +502,9 @@ function getMimeType(filePath) {
 
 async function serveStatic(req, res, pathname) {
   const cleanPath = pathname === "/" ? "/index.html" : pathname;
-  const target = path.join(PUBLIC_DIR, cleanPath);
-  if (!target.startsWith(PUBLIC_DIR)) {
+  const target = path.resolve(PUBLIC_DIR, `.${cleanPath}`);
+  const relativeTarget = path.relative(PUBLIC_DIR, target);
+  if (relativeTarget.startsWith("..") || path.isAbsolute(relativeTarget)) {
     sendText(res, 403, "Forbidden");
     return;
   }

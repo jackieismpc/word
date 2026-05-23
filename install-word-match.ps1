@@ -37,6 +37,7 @@ if ($tailscaleInfo -and $tailscaleInfo.IPv4.Count -gt 0) {
 
 Write-Host ""
 Write-Host "安装完成。"
+Write-Host "本项目不依赖 npm、pnpm 或额外 node_modules。"
 Write-Host "启动: 双击 start-word-match.cmd"
 Write-Host "停止: 双击 stop-word-match.cmd"
 Write-Host ""

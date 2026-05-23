@@ -7,7 +7,11 @@ $script:WordMatchFallbackNodeVersion = "v20.12.2"
 function Get-WordMatchScriptDir {
   param([string]$CommandPath)
 
-  Split-Path -Parent $CommandPath
+  if ([string]::IsNullOrWhiteSpace($CommandPath)) {
+    return (Resolve-Path $PSScriptRoot).Path
+  }
+
+  (Resolve-Path (Split-Path -Parent $CommandPath)).Path
 }
 
 function Get-WordMatchRuntimeDir {
@@ -55,18 +59,34 @@ function Add-WordMatchUniquePath {
   }
 }
 
+function Add-WordMatchNodeCandidate {
+  param(
+    [System.Collections.Generic.List[string]]$Paths,
+    [string]$Candidate
+  )
+
+  if ([string]::IsNullOrWhiteSpace($Candidate)) {
+    return
+  }
+
+  $expanded = [Environment]::ExpandEnvironmentVariables($Candidate.Trim())
+  Add-WordMatchUniquePath -Paths $Paths -Candidate $expanded
+}
+
 function Get-WordMatchNodeCandidates {
   param([string]$ScriptDir)
 
   $candidates = [System.Collections.Generic.List[string]]::new()
   $installRoots = [System.Collections.Generic.List[string]]::new()
+  $homeDir = $env:USERPROFILE
 
-  Add-WordMatchUniquePath -Paths $candidates -Candidate (Join-Path (Get-WordMatchPortableNodeDir -ScriptDir $ScriptDir) "node.exe")
+  Add-WordMatchNodeCandidate -Paths $candidates -Candidate (Join-Path (Get-WordMatchPortableNodeDir -ScriptDir $ScriptDir) "node.exe")
 
   foreach ($commandName in @("node.exe", "node")) {
     try {
       $command = Get-Command $commandName -ErrorAction Stop | Select-Object -First 1
-      Add-WordMatchUniquePath -Paths $candidates -Candidate $command.Source
+      Add-WordMatchNodeCandidate -Paths $candidates -Candidate $command.Source
+      Add-WordMatchNodeCandidate -Paths $candidates -Candidate $command.Path
     } catch {
     }
   }
@@ -79,11 +99,13 @@ function Get-WordMatchNodeCandidates {
 
   foreach ($root in $installRoots) {
     if ($root -eq $env:LocalAppData) {
-      Add-WordMatchUniquePath -Paths $candidates -Candidate (Join-Path $root "Programs\nodejs\node.exe")
+      Add-WordMatchNodeCandidate -Paths $candidates -Candidate (Join-Path $root "Programs\nodejs\node.exe")
+      Add-WordMatchNodeCandidate -Paths $candidates -Candidate (Join-Path $root "Volta\bin\node.exe")
+      Add-WordMatchNodeCandidate -Paths $candidates -Candidate (Join-Path $root "fnm\aliases\default\node.exe")
       continue
     }
 
-    Add-WordMatchUniquePath -Paths $candidates -Candidate (Join-Path $root "nodejs\node.exe")
+    Add-WordMatchNodeCandidate -Paths $candidates -Candidate (Join-Path $root "nodejs\node.exe")
   }
 
   if ($env:APPDATA) {
@@ -92,8 +114,31 @@ function Get-WordMatchNodeCandidates {
       Get-ChildItem -Path $nvmDir -Directory -ErrorAction SilentlyContinue |
         Sort-Object Name -Descending |
         ForEach-Object {
-          Add-WordMatchUniquePath -Paths $candidates -Candidate (Join-Path $_.FullName "node.exe")
+          Add-WordMatchNodeCandidate -Paths $candidates -Candidate (Join-Path $_.FullName "node.exe")
         }
+    }
+  }
+
+  foreach ($candidate in @(
+    $env:NVM_SYMLINK,
+    (Join-Path $env:NVM_SYMLINK "node.exe"),
+    $env:NVM_HOME,
+    (Join-Path $env:NVM_HOME "node.exe"),
+    $env:VOLTA_HOME,
+    (Join-Path $env:VOLTA_HOME "bin\node.exe"),
+    $env:FNM_DIR,
+    (Join-Path $env:FNM_DIR "aliases\default\node.exe")
+  )) {
+    Add-WordMatchNodeCandidate -Paths $candidates -Candidate $candidate
+  }
+
+  if (-not [string]::IsNullOrWhiteSpace($homeDir)) {
+    foreach ($candidate in @(
+      (Join-Path $homeDir "scoop\apps\nodejs-current\current\node.exe"),
+      (Join-Path $homeDir "scoop\apps\nodejs-lts\current\node.exe"),
+      (Join-Path $homeDir ".volta\bin\node.exe")
+    )) {
+      Add-WordMatchNodeCandidate -Paths $candidates -Candidate $candidate
     }
   }
 
