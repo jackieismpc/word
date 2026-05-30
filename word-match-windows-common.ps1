@@ -3,6 +3,7 @@ Set-StrictMode -Version Latest
 $script:WordMatchMinimumNodeMajor = 18
 $script:WordMatchPreferredNodeMajor = 20
 $script:WordMatchFallbackNodeVersion = "v20.12.2"
+$script:WordMatchOfflineAssetsDirName = "offline-assets"
 
 function Get-WordMatchScriptDir {
   param([string]$CommandPath)
@@ -20,10 +21,31 @@ function Get-WordMatchRuntimeDir {
   Join-Path $ScriptDir ".runtime"
 }
 
+function Get-WordMatchOfflineAssetsDir {
+  param([string]$ScriptDir)
+
+  Join-Path $ScriptDir $script:WordMatchOfflineAssetsDirName
+}
+
+function Get-WordMatchOfflineNodeDir {
+  param([string]$ScriptDir)
+
+  Join-Path (Get-WordMatchOfflineAssetsDir -ScriptDir $ScriptDir) "node"
+}
+
 function Get-WordMatchPortableNodeDir {
   param([string]$ScriptDir)
 
   Join-Path (Get-WordMatchRuntimeDir -ScriptDir $ScriptDir) "node"
+}
+
+function Test-WordMatchAllowOnlineDownload {
+  $value = [string]$env:WORD_MATCH_ALLOW_ONLINE_DOWNLOAD
+  if ([string]::IsNullOrWhiteSpace($value)) {
+    return $false
+  }
+
+  @("1", "true", "yes", "on") -contains $value.Trim().ToLowerInvariant()
 }
 
 function Get-WordMatchServerScriptPath {
@@ -73,6 +95,24 @@ function Add-WordMatchNodeCandidate {
   Add-WordMatchUniquePath -Paths $Paths -Candidate $expanded
 }
 
+function Add-WordMatchNodeCandidateFromEnv {
+  param(
+    [System.Collections.Generic.List[string]]$Paths,
+    [string]$BasePath,
+    [string]$ChildPath = ""
+  )
+
+  if ([string]::IsNullOrWhiteSpace($BasePath)) {
+    return
+  }
+
+  Add-WordMatchNodeCandidate -Paths $Paths -Candidate $BasePath
+
+  if (-not [string]::IsNullOrWhiteSpace($ChildPath)) {
+    Add-WordMatchNodeCandidate -Paths $Paths -Candidate (Join-Path $BasePath $ChildPath)
+  }
+}
+
 function Get-WordMatchNodeCandidates {
   param([string]$ScriptDir)
 
@@ -119,18 +159,10 @@ function Get-WordMatchNodeCandidates {
     }
   }
 
-  foreach ($candidate in @(
-    $env:NVM_SYMLINK,
-    (Join-Path $env:NVM_SYMLINK "node.exe"),
-    $env:NVM_HOME,
-    (Join-Path $env:NVM_HOME "node.exe"),
-    $env:VOLTA_HOME,
-    (Join-Path $env:VOLTA_HOME "bin\node.exe"),
-    $env:FNM_DIR,
-    (Join-Path $env:FNM_DIR "aliases\default\node.exe")
-  )) {
-    Add-WordMatchNodeCandidate -Paths $candidates -Candidate $candidate
-  }
+  Add-WordMatchNodeCandidateFromEnv -Paths $candidates -BasePath $env:NVM_SYMLINK -ChildPath "node.exe"
+  Add-WordMatchNodeCandidateFromEnv -Paths $candidates -BasePath $env:NVM_HOME -ChildPath "node.exe"
+  Add-WordMatchNodeCandidateFromEnv -Paths $candidates -BasePath $env:VOLTA_HOME -ChildPath "bin\node.exe"
+  Add-WordMatchNodeCandidateFromEnv -Paths $candidates -BasePath $env:FNM_DIR -ChildPath "aliases\default\node.exe"
 
   if (-not [string]::IsNullOrWhiteSpace($homeDir)) {
     foreach ($candidate in @(
@@ -176,10 +208,19 @@ function Get-WordMatchNodeInfo {
 function Resolve-WordMatchNodeCommand {
   param(
     [string]$ScriptDir,
-    [switch]$RequireCompatible
+    [switch]$RequireCompatible,
+    [switch]$SkipPortable
   )
 
-  foreach ($candidate in Get-WordMatchNodeCandidates -ScriptDir $ScriptDir) {
+  $candidates = if ($SkipPortable) {
+    @(Get-WordMatchNodeCandidates -ScriptDir $ScriptDir | Where-Object {
+      $_ -ne (Join-Path (Get-WordMatchPortableNodeDir -ScriptDir $ScriptDir) "node.exe")
+    })
+  } else {
+    Get-WordMatchNodeCandidates -ScriptDir $ScriptDir
+  }
+
+  foreach ($candidate in $candidates) {
     $nodeInfo = Get-WordMatchNodeInfo -NodeExe $candidate
     if (-not $nodeInfo) {
       continue
@@ -193,6 +234,12 @@ function Resolve-WordMatchNodeCommand {
   }
 
   return $null
+}
+
+function Get-WordMatchPortableNodeInfo {
+  param([string]$ScriptDir)
+
+  Get-WordMatchNodeInfo -NodeExe (Join-Path (Get-WordMatchPortableNodeDir -ScriptDir $ScriptDir) "node.exe")
 }
 
 function Get-WordMatchFileText {
@@ -342,15 +389,57 @@ function Set-WordMatchTlsDefaults {
   }
 }
 
-function Get-WordMatchPortableNodeArchiveName {
+function Get-WordMatchPortableNodeArchiveBaseName {
   $architecture = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
 
   switch ($architecture) {
-    "x64" { return "win-x64-zip" }
-    "arm64" { return "win-arm64-zip" }
-    "x86" { return "win-x86-zip" }
+    "x64" { return "win-x64" }
+    "arm64" { return "win-arm64" }
+    "x86" { return "win-x86" }
     default { throw "暂不支持的 Windows 架构: $architecture" }
   }
+}
+
+function Get-WordMatchPortableNodeArchiveName {
+  "$(Get-WordMatchPortableNodeArchiveBaseName)-zip"
+}
+
+function Get-WordMatchPortableNodeArchiveFileName {
+  param(
+    [string]$Version = $script:WordMatchFallbackNodeVersion
+  )
+
+  "node-$Version-$(Get-WordMatchPortableNodeArchiveBaseName).zip"
+}
+
+function Find-WordMatchOfflineNodeArchive {
+  param([string]$ScriptDir)
+
+  $offlineNodeDir = Get-WordMatchOfflineNodeDir -ScriptDir $ScriptDir
+  if (-not (Test-Path $offlineNodeDir)) {
+    return $null
+  }
+
+  $archiveBaseName = Get-WordMatchPortableNodeArchiveBaseName
+  foreach ($candidateName in @(
+    (Get-WordMatchPortableNodeArchiveFileName),
+    "node-$archiveBaseName.zip",
+    "node.zip"
+  )) {
+    $candidatePath = Join-Path $offlineNodeDir $candidateName
+    if (Test-Path $candidatePath) {
+      return (Resolve-Path $candidatePath).Path
+    }
+  }
+
+  $matchedArchive = Get-ChildItem -Path $offlineNodeDir -Filter "node-*-$archiveBaseName.zip" -File -ErrorAction SilentlyContinue |
+    Sort-Object Name -Descending |
+    Select-Object -First 1
+  if ($matchedArchive) {
+    return $matchedArchive.FullName
+  }
+
+  return $null
 }
 
 function Get-WordMatchPortableNodeRelease {
@@ -396,10 +485,9 @@ function Install-WordMatchPortableNode {
   $runtimeDir = Get-WordMatchRuntimeDir -ScriptDir $ScriptDir
   $nodeDir = Get-WordMatchPortableNodeDir -ScriptDir $ScriptDir
   $downloadDir = Join-Path $runtimeDir "download-node"
-  $archiveName = Get-WordMatchPortableNodeArchiveName
-  $release = Get-WordMatchPortableNodeRelease -ArchiveName $archiveName
   $zipPath = Join-Path $downloadDir "node.zip"
   $extractDir = Join-Path $downloadDir "extract"
+  $offlineArchive = Find-WordMatchOfflineNodeArchive -ScriptDir $ScriptDir
 
   New-Item -ItemType Directory -Path $runtimeDir -Force | Out-Null
 
@@ -408,8 +496,27 @@ function Install-WordMatchPortableNode {
   }
 
   New-Item -ItemType Directory -Path $downloadDir -Force | Out-Null
-  Write-Host "正在下载 Node.js $($release.Version) ..."
-  Invoke-WebRequest -Uri $release.Url -OutFile $zipPath -UseBasicParsing
+  if ($offlineArchive) {
+    Write-Host "检测到离线 Node.js 包，正在使用: $offlineArchive"
+    Copy-Item -Path $offlineArchive -Destination $zipPath -Force
+  } else {
+    if (-not (Test-WordMatchAllowOnlineDownload)) {
+      $offlineNodeDir = Get-WordMatchOfflineNodeDir -ScriptDir $ScriptDir
+      $expectedName = Get-WordMatchPortableNodeArchiveFileName
+      throw "未找到离线 Node.js 包，且当前不允许联网下载。请先把官方便携包放到 $offlineNodeDir，例如 $expectedName；如需显式允许联网下载，请设置环境变量 WORD_MATCH_ALLOW_ONLINE_DOWNLOAD=1。"
+    }
+
+    $archiveName = Get-WordMatchPortableNodeArchiveName
+    $release = Get-WordMatchPortableNodeRelease -ArchiveName $archiveName
+    Write-Host "未找到离线 Node.js 包，正在下载 Node.js $($release.Version) ..."
+    try {
+      Invoke-WebRequest -Uri $release.Url -OutFile $zipPath -UseBasicParsing
+    } catch {
+      $offlineNodeDir = Get-WordMatchOfflineNodeDir -ScriptDir $ScriptDir
+      $expectedName = Get-WordMatchPortableNodeArchiveFileName
+      throw "Node.js 在线下载失败。请先把官方便携包放到 $offlineNodeDir，例如 $expectedName，然后重新运行安装脚本。"
+    }
+  }
 
   Write-Host "正在解压 Node.js ..."
   Expand-Archive -Path $zipPath -DestinationPath $extractDir -Force

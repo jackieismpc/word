@@ -11,15 +11,32 @@ $runtimeDir = Get-WordMatchRuntimeDir -ScriptDir $scriptDir
 
 New-Item -ItemType Directory -Path $runtimeDir -Force | Out-Null
 
-$nodeInfo = Resolve-WordMatchNodeCommand -ScriptDir $scriptDir -RequireCompatible
+$portableNode = Get-WordMatchPortableNodeInfo -ScriptDir $scriptDir
+$offlineArchive = Find-WordMatchOfflineNodeArchive -ScriptDir $scriptDir
+$systemNode = Resolve-WordMatchNodeCommand -ScriptDir $scriptDir -RequireCompatible -SkipPortable
+$nodeInfo = $null
 
-if ($nodeInfo) {
-  Write-Host "已找到可用的 Node.js。"
+if ($portableNode) {
+  $nodeInfo = $portableNode
+  Write-Host "已安装并使用项目自带的离线 Node.js。"
   Write-Host "路径: $($nodeInfo.Path)"
   Write-Host "版本: $($nodeInfo.Version)"
-} else {
+} elseif ($offlineArchive) {
+  $offlineNodeDir = Get-WordMatchOfflineNodeDir -ScriptDir $scriptDir
   Write-Host "未找到 Node.js 18+，准备安装项目自带运行时。"
-  Write-Host "将从 https://nodejs.org 下载官方 Windows 便携版。"
+  Write-Host "安装顺序："
+  Write-Host "  1. 优先使用项目目录中的离线包：$offlineNodeDir"
+  Write-Host "  2. 如果显式允许联网下载，才会尝试从 https://nodejs.org 下载官方 Windows 便携版"
+  $nodeInfo = Install-WordMatchPortableNode -ScriptDir $scriptDir
+  Write-Host "Node.js 已安装到: $($nodeInfo.Path)"
+  Write-Host "版本: $($nodeInfo.Version)"
+} elseif ($systemNode) {
+  $nodeInfo = $systemNode
+  Write-Host "已找到系统中的可用 Node.js。"
+  Write-Host "路径: $($nodeInfo.Path)"
+  Write-Host "版本: $($nodeInfo.Version)"
+  Write-Host "提示：如果希望优先使用项目自带离线 Node.js，请把 zip 包放到 $(Get-WordMatchOfflineNodeDir -ScriptDir $scriptDir)"
+} else {
   $nodeInfo = Install-WordMatchPortableNode -ScriptDir $scriptDir
   Write-Host "Node.js 已安装到: $($nodeInfo.Path)"
   Write-Host "版本: $($nodeInfo.Version)"
@@ -41,6 +58,9 @@ Write-Host "本项目不依赖 npm、pnpm 或额外 node_modules。"
 Write-Host "启动: 双击 start-word-match.cmd"
 Write-Host "停止: 双击 stop-word-match.cmd"
 Write-Host ""
-Write-Host "如果你的网络环境较严格，请确认可以访问："
-Write-Host "  - https://nodejs.org"
-Write-Host "  - https://oss-cdn.tsdanci.com"
+Write-Host "离线 Windows 安装建议："
+Write-Host "  - 先在可联网机器上准备 offline-assets\\node 中的离线包"
+Write-Host "  - 再把整个项目目录复制到 Windows"
+Write-Host ""
+Write-Host "如需显式允许在线下载 Node.js，请设置："
+Write-Host "  - WORD_MATCH_ALLOW_ONLINE_DOWNLOAD=1"

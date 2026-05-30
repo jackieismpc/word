@@ -1,3 +1,8 @@
-.runtime/node/
-.runtime/download-node/
-.runtime/*.log
+.DS_Store
+.runtime/
+storage/*.tmp
+node_offline/
+offline-assets/node/*.zip
+offline-assets/node/*.tar.gz
+offline-assets/node/*.tar.xz
+offline-assets/node/SHASUMS256.txt

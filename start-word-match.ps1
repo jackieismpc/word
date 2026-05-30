@@ -18,11 +18,26 @@ $stderrLog = Join-Path $runtimeDir "server.stderr.log"
 
 New-Item -ItemType Directory -Path $runtimeDir -Force | Out-Null
 
-$nodeInfo = Resolve-WordMatchNodeCommand -ScriptDir $scriptDir -RequireCompatible
+$nodeInfo = Get-WordMatchPortableNodeInfo -ScriptDir $scriptDir
+$offlineArchive = Find-WordMatchOfflineNodeArchive -ScriptDir $scriptDir
+
+if (-not $nodeInfo -and $offlineArchive) {
+  Write-Host "检测到项目离线 Node.js 包，正在安装本地运行时..."
+  & (Join-Path $scriptDir "install-word-match.ps1")
+  $nodeInfo = Get-WordMatchPortableNodeInfo -ScriptDir $scriptDir
+}
+
+if (-not $nodeInfo) {
+  $nodeInfo = Resolve-WordMatchNodeCommand -ScriptDir $scriptDir -RequireCompatible -SkipPortable
+}
+
 if (-not $nodeInfo) {
   Write-Host "未找到可用的 Node.js，正在自动安装本地运行时..."
   & (Join-Path $scriptDir "install-word-match.ps1")
-  $nodeInfo = Resolve-WordMatchNodeCommand -ScriptDir $scriptDir -RequireCompatible
+  $nodeInfo = Get-WordMatchPortableNodeInfo -ScriptDir $scriptDir
+  if (-not $nodeInfo) {
+    $nodeInfo = Resolve-WordMatchNodeCommand -ScriptDir $scriptDir -RequireCompatible -SkipPortable
+  }
 }
 
 if (-not $nodeInfo) {

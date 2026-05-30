@@ -7,6 +7,11 @@ $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "word-match-wsl-common.ps1")
 
 $scriptDir = Get-WordMatchScriptDir -CommandPath $MyInvocation.MyCommand.Path
+
+if ($env:WORD_MATCH_ALLOW_WSL_ONLINE -ne "1") {
+  throw "WSL2 方案依赖联网环境。为了保证 Windows 离线启动，请改用 start-word-match.cmd。如确实要使用联网 WSL 方案，请先设置环境变量 WORD_MATCH_ALLOW_WSL_ONLINE=1。"
+}
+
 $distribution = Get-WordMatchUbuntuDistributionName
 if (-not $distribution) {
   throw "未检测到 Ubuntu WSL，请先运行 install-word-match-wsl.cmd。"

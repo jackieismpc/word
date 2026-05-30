@@ -8,6 +8,10 @@ $ErrorActionPreference = "Stop"
 
 $scriptDir = Get-WordMatchScriptDir -CommandPath $MyInvocation.MyCommand.Path
 
+if ($env:WORD_MATCH_ALLOW_WSL_ONLINE -ne "1") {
+  throw "WSL2 方案需要联网安装 Ubuntu 和 apt 依赖。为了保证 Windows 离线安装，请改用 install-word-match.cmd。如确实要使用联网 WSL 方案，请先设置环境变量 WORD_MATCH_ALLOW_WSL_ONLINE=1。"
+}
+
 if (-not (Test-WordMatchIsAdministrator)) {
   Write-Host "首次安装 WSL2/Ubuntu 需要管理员权限，正在尝试提权..."
   $process = Start-Process -FilePath "powershell.exe" `
